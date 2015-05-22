@@ -17,7 +17,6 @@ registry = {
     'BrokenPowerLaw1D':           models.BrokenPowerLaw1D(1.0, 1.0, 1.0, 1.0),
     'LogParabola1D' :             models.LogParabola1D(1.0, 1.0, 1.0, 1.0),
     'PowerLaw1D' :                models.PowerLaw1D(1.0, 1.0, 1.0),
-    'Beta1D':                     models.Beta1D(1.0, 1.0, 1.0, 1.0),
     'Linear1D':                   models.Linear1D(1.0, 0.0),
     'Const1D':                    models.Const1D(0.0),
     'Redshift':                   models.Redshift(0.0),
