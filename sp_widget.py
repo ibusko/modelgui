@@ -1,5 +1,6 @@
 from __future__ import division
 
+import math
 import re
 import numpy as np
 from astropy.modeling import Parameter, Fittable1DModel, SummedCompositeModel
@@ -522,6 +523,22 @@ class SpectralComponentsModel(QStandardItemModel):
         parent = self.invisibleRootItem()
         parent.appendRow(item)
 
+
+# RE pattern to decode scientific and floating point notation.
+_pattern = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+
+def _float_check(value):
+    """ Checks for a valid float in either scientific or floating point notation"""
+    substring = _pattern.findall(str(value))
+    if substring:
+        number = float(substring[0])
+        if len(substring) > 1:
+            number *= math.pow(10., int(substring[1]))
+        return number
+    else:
+        return False
+
+
 # This class adds to the base model class the ability to handle
 # two additional tree levels. These levels hold respectively
 # the parameter names of each component, and each parameter's
@@ -530,10 +547,6 @@ class ActiveComponentsModel(SpectralComponentsModel):
     def __init__(self, name):
         SpectralComponentsModel.__init__(self, name)
         self.itemChanged.connect(self._onItemChanged)
-
-        # RE pattern to decode scientific notation and
-        # floating point notation.
-        self._pattern = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
     # TODO use QDataWidgetMapper
     # this violation of MVC design principles is necessary
@@ -588,15 +601,14 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
     def _floatItemChanged(self, item):
         type = item.type
-        substring = self._pattern.findall(item.text())
-        if substring:
+        number = _float_check(item.text())
+        if number:
             if hasattr(item, 'parameter'):
-                number = substring[0]
-                setattr(item.parameter, type, float(number))
-                item.setData(type + ": " + number, role=Qt.DisplayRole)
+                setattr(item.parameter, type, number)
+                item.setData(type + ": " + str(number), role=Qt.DisplayRole)
                 # parameter name is followed by its value when displaying in tree.
                 if type == 'value':
-                    item.parent().setData(item.parameter.name + ": " + number, role=Qt.DisplayRole)
+                    item.parent().setData(item.parameter.name + ": " + str(number), role=Qt.DisplayRole)
         else:
             item.setData(type + ": " + str(getattr(item.parameter, type)), role=Qt.DisplayRole)
 

@@ -30,6 +30,6 @@ registry = {
 
 
 def getComponentName(function):
+    # there must be a better way of getting the class' name......
     name = str(function.__class__)
-    return name.split(".")[-1][:-2]
-
+    return name.split('\'>')[0].split(".")[-1]

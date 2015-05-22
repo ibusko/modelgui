@@ -45,12 +45,13 @@ Choose the one to run at the command line with
 'python modelmvc.py <name>'
 
 
-
 - mm_widget_demo.py
 
 Demo driver for the code in sp_model_manager.py. Run it to
 see the basic sp_widget in action (right-click on the tree
-elements brings up contextual menus).
+elements brings up contextual menus):
+
+% python mm_widget_demo.py
 
 
 - models_registry.py:
@@ -59,10 +60,9 @@ Dict with astropy.modeling function instances used by sp_widget.
 This should be a dictionary with classes instead of instances,
 so we could instantiate as needed. The astropy.modeling.Model
 class provides such a dictionary, so why not to use it? We
-eventually will, but for now this class exists (with the registry
-feature) only in the astropy dev version. And that version can't
-be built due to a Cython syntax error. So we temporarily resort to
-brute force and just .copy() an instance whenever it's necessary.
+temporarily resort to brute force and just .copy() an instance
+whenever it's necessary. This seems to work pretty well so far.
+
 
 - sp_adjust.py
 
@@ -72,6 +72,7 @@ that depend on the specific values of wavelength and flux being
 fitted, in order for the fitting algorithms to avoid getting
 stuck in secondary minima. The nature of the "adjustment" is
 function-dependent.
+
 
 - test_data.py
 
