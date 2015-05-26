@@ -242,9 +242,16 @@ class _SpectralModelsWindow(_BaseWindow):
 
         delete_button = QPushButton('Delete', self)
         delete_button.setFocusPolicy(Qt.NoFocus)
-        delete_button.setToolTip("Delete selected component from ModelManager instance")
+        delete_button.setToolTip('Delete selected component from ModelManager instance')
         self.connect(delete_button, SIGNAL('clicked()'), self.deleteComponent)
         self.button_layout.addWidget(delete_button)
+
+        # save button is not accessible from contextual menus.
+        save_button = QPushButton('Save', self)
+        save_button.setFocusPolicy(Qt.NoFocus)
+        save_button.setToolTip('Save model to file.')
+        self.connect(save_button, SIGNAL('clicked()'), self.saveModel)
+        self.button_layout.addWidget(save_button)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button)
@@ -311,6 +318,9 @@ class _SpectralModelsWindow(_BaseWindow):
             self.treeView.setExpanded(index_below, is_expanded)
             self.treeView.clearSelection()
             self.emit(SIGNAL("treeChanged"), index.row())
+
+    def saveModel(self):
+        pass
 
 # Parameter values can be edited directly from their QStandardItem
 # representation. The code below (still incomplete) is an attempt
