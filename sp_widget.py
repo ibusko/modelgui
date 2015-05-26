@@ -338,17 +338,15 @@ class _SpectralModelsWindow(_BaseWindow):
                 print("name = '" + str(item.name) + "',")
 
     def readModel(self):
-
         import sys
         sys.path.append('/Users/busko/Projects/specfit/proto/')
         exec "import " + "n5548_models" + " as m" in locals(), locals()
-
         model = m.model1
-        #TODO this doesn't work because 'model' is an instance of a
-        # compound model. Such importable input file can only be read
-        # using a parser that will read each component in text form and
-        # instantiate it to add it separately to the model list in here.
-        # self.model.addItems(model.items)
+
+        for i, model in enumerate(m.model1._submodels):
+            name = m.model1._submodels_names[i]
+            for j, param_name in enumerate(model.param_names):
+                print '@@@@@@     line: 349  - ',name, param_name
 
 
 
@@ -376,7 +374,7 @@ class _SpectralModelsWindow(_BaseWindow):
 
 
 
-# Window with the spectral component library ------------------------------------------------
+# Window with the spectral component library ----------------------------------
 
 class _SpectralLibraryGUI(object):
 
