@@ -123,9 +123,9 @@ def _getName(name):
 # SpectralModelManager. Each tab holds the rendering created by
 # SpectralModelManager for an individual instance of ModelManager.
 #
-# The tabbed widget also supports some functionality that make sense
-# only when all this stuff is run in interactive mode from the
-# command line, such as 'Close' and 'Refresh' buttons.
+# The tabbed widget also supports some GUI functionality that make
+# sense only when all this stuff is run in interactive mode from
+# the command line, such as 'Close' and 'Refresh' buttons.
 #
 class _ModelManagerWidget(QTabWidget):
     def __init__(self, manager, name, parent=None, threaded=False):
@@ -261,8 +261,8 @@ class _ModelManagerWidget(QTabWidget):
 
 # The first time this function is called, it starts the QApplication
 # and runs the GUI, and passes to it the first instance of a model
-# manager. Subsequent calls will just  add a new model manager and
-# make the widget visible.
+# manager. Subsequent calls will just  add a new model manager instance
+# and make the widget visible.
 def _displayGUI(manager, name):
     global __dialog
     if not __dialog:
@@ -283,7 +283,7 @@ def _displayGUI(manager, name):
 # values and sequence of evaluation in the composite.
 
 class ModelManager(object):
-    """ Instances of this class hold a composite spectral model.
+    """ Instances of this class hold a SummedCompositeModel spectral model.
 
     A ModelManager instance contains a user-definable list of spectral
     components from astropy.modeling.functional_models. From that list,

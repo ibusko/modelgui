@@ -247,14 +247,20 @@ class _SpectralModelsWindow(_BaseWindow):
         self.button_layout.addWidget(delete_button)
 
         # save button is not accessible from contextual menus.
-        save_button = QPushButton('Save', self)
-        save_button.setFocusPolicy(Qt.NoFocus)
-        save_button.setToolTip('Save model to file.')
-        self.connect(save_button, SIGNAL('clicked()'), self.saveModel)
-        self.button_layout.addWidget(save_button)
+        self.save_button = QPushButton('Save', self)
+        self.save_button.setFocusPolicy(Qt.NoFocus)
+        self.save_button.setToolTip('Save model to file.')
+        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
+        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
+        self.button_layout.addWidget(self.save_button)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button)
+
+    # this will change the Save button appearance depending on how many
+    # components are stored in the current active list.
+    def _setSaveButtonLooks(self):
+        self.save_button.setEnabled(len(self.model.items) > 0)
 
     # contextual menu
     def openMenu(self, position):
