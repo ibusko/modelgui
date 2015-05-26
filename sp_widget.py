@@ -242,17 +242,24 @@ class _SpectralModelsWindow(_BaseWindow):
 
         delete_button = QPushButton('Delete', self)
         delete_button.setFocusPolicy(Qt.NoFocus)
-        delete_button.setToolTip('Delete selected component from ModelManager instance')
+        delete_button.setToolTip('Remove selected component from model manager instance')
         self.connect(delete_button, SIGNAL('clicked()'), self.deleteComponent)
         self.button_layout.addWidget(delete_button)
 
-        # save button is not accessible from contextual menus.
+        # read and save buttons are not accessible from contextual menus.
+        self.read_button = QPushButton('Read', self)
+        self.read_button.setFocusPolicy(Qt.NoFocus)
+        self.read_button.setToolTip('Rad model from file.')
+        self.button_layout.addWidget(self.read_button)
+
         self.save_button = QPushButton('Save', self)
         self.save_button.setFocusPolicy(Qt.NoFocus)
         self.save_button.setToolTip('Save model to file.')
-        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
-        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
         self.button_layout.addWidget(self.save_button)
+
+        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
+        self.connect(self.read_button, SIGNAL('clicked()'), self.readModel)
+        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button)
@@ -326,7 +333,27 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-        pass
+        for item in self.model.items:
+            if item.name:
+                print("name = '" + str(item.name) + "',")
+
+    def readModel(self):
+
+        import sys
+        sys.path.append('/Users/busko/Projects/specfit/proto/')
+        exec "import " + "n5548_models" + " as m" in locals(), locals()
+
+        model = m.model1
+        #TODO this doesn't work because 'model' is an instance of a
+        # compound model. Such importable input file can only be read
+        # using a parser that will read each component in text form and
+        # instantiate it to add it separately to the model list in here.
+        # self.model.addItems(model.items)
+
+
+
+
+
 
 # Parameter values can be edited directly from their QStandardItem
 # representation. The code below (still incomplete) is an attempt
@@ -374,11 +401,15 @@ class _SpectralLibraryGUI(object):
             # if issubclass(function.__class__, Fittable1DModel) or \
             #    issubclass(function.__class__, PolynomialModel):
             # TODO Polynomials do not carry internal instances of
-            # Parameter. This makes the code in this module unusable.
-            # We need to add special handling tools that can get and
-            # set polynomial coefficients. Thus suggests that they
-            # were not designed t be mixed in with instances of
-            # Fittable1DModel.
+            # Parameter. This makes the code in this module unusable,
+            # since it relies on the existence of parameter instances
+            # in the spectral model functions. To make it usable, we
+            # need to add special handling code that can get and set
+            # polynomial coefficients. Thus suggests that polynomials
+            # were not designed to be mixed in with instances of
+            # Fittable1DModel. This could make sense from a software
+            # design standpoint, but it is hardly what the use cases
+            # seem to imply.
             if issubclass(function.__class__, Fittable1DModel):
                 data.append(function)
 
@@ -736,7 +767,8 @@ class SpectralModelManager(QObject):
         splitter = QSplitter();
         splitter.addWidget(self.models_gui.window)
         splitter.addWidget(self._library_gui.window)
-        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
 
         # Tree and data change and click events must
         # be propagated to the outside world.
