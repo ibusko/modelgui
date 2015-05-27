@@ -282,11 +282,11 @@ def _displayGUI(manager, name):
 # values and sequence of evaluation in the composite.
 
 class ModelManager(object):
-    """ Instances of this class hold a SummedCompositeModel spectral model.
+    """ Instances of this class hold a compound model spectral model.
 
     A ModelManager instance contains a user-definable list of spectral
     components from astropy.modeling.functional_models. From that list,
-    a SummedCompositeModel is built and used to compute flux values,
+    a compound model is built and used to compute flux values,
     given spectral coordinate values. The list of spectral components
     in any particular instance of ModelManager is displayed on screen,
     in a tabbed pane, and can be interacted with so that individual
@@ -316,7 +316,7 @@ class ModelManager(object):
       List with instances of spectral components from
       astropy.modeling.functional_models. If not provided,
       the instance will be initialized with an empty
-      SummedCompositeModel.
+      compound model.
 
     Example:
     -------
@@ -411,7 +411,7 @@ class ModelManager(object):
 
         This region is used by code in module sp_adjust. If no
         X and/or Y arrays are provided via this method, spectral
-        components added to the SummedCompositeModel will be
+        components added to the compound model will be
         initialized to a default set of parameter values.
 
         Parameters
@@ -425,7 +425,7 @@ class ModelManager(object):
         self.manager.setArrays(x, y)
 
     def spectrum(self, wave):
-        ''' Computes the SummedCompositeModel for a given
+        ''' Computes the compond model for a given
         array of spectral coordinate values.
 
         Parameters
