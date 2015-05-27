@@ -4,7 +4,7 @@ import os, sys
 import math
 import re
 import numpy as np
-from astropy.modeling import Parameter, Fittable1DModel, SummedCompositeModel
+from astropy.modeling import Parameter, Fittable1DModel
 from astropy.modeling.polynomial import PolynomialModel
 
 import signal_slot
@@ -169,11 +169,14 @@ class _BaseWindow(QWidget):
         grid_layout = QGridLayout()
         grid_layout.addWidget(self.treeView, 0, 0)
 
-        # button_layout is not used by this class but provides a
-        # place where sub classes can put in their own widgets.
+        # the following are not used by this class but provide
+        # places where sub classes can put in their own widgets.
+        self.expression_layout = QHBoxLayout()
+        grid_layout.addLayout(self.expression_layout, 1, 0)
+
         self.button_layout = QHBoxLayout()
         self.button_layout.addStretch()
-        grid_layout.addLayout(self.button_layout, 1, 0)
+        grid_layout.addLayout(self.button_layout, 2, 0)
 
         self.setLayout(grid_layout)
 
@@ -288,12 +291,22 @@ class _SpectralModelsWindow(_BaseWindow):
         self.save_button.setToolTip('Save model to file.')
         self.button_layout.addWidget(self.save_button)
 
-        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
-        self.connect(self.read_button, SIGNAL('clicked()'), self.readModel)
-        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
+        # expression text field
+        self.expression_field = QLineEdit('Expression goes here blah b;ah b;ah', self)
+
+        self.expression_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.expression_field.setFocusPolicy(Qt.NoFocus)
+        self.expression_field.setToolTip('Model expression.')
+        self.expression_layout.addWidget(self.expression_field)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button)
+
+        # connect signals.
+        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
+        self.connect(self.read_button, SIGNAL('clicked()'), self.readModel)
+        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
 
     # this will change the Save button appearance depending on how many
     # components are stored in the current active list.
@@ -376,6 +389,8 @@ class _SpectralModelsWindow(_BaseWindow):
         if compound_model:
             for i, model in enumerate(compound_model._submodels):
                 self.model.addOneElement(model)
+
+            self.expression_field.setText(compound_model._format_expression())
 
 
 # Parameter values can be edited directly from their QStandardItem
@@ -696,14 +711,27 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self._floatItemChanged(item)
 
 
+# Builds a compound model by adding together all components in
+# the list. This must be replaced by more capable code that can
+# apply different kinds of operators to the components. It all
+# depends on how compound models will handle components that
+# are themselves instances of compound models.
+
+def _compoundModel(components):
+    result = components[0]
+    if len(components) > 1:
+        for component in components[1:]:
+            result += component
+    return result
+
+
 class SpectralModelManager(QObject):
     """ Basic class to be called by external code.
 
     It is responsible for building the GUI trees and putting them together
     into a split pane layout. It also provides accessors to the active
     model individual spectral components and to the library functions,
-    as well as to the composite spectrum that results from a
-    SummedCompositeModel call.
+    as well as to the spectrum that results from a compound model  call.
 
     It inherits from QObject for the sole purpose of being able to
     respond to Qt signals.
@@ -748,8 +776,8 @@ class SpectralModelManager(QObject):
 
         This region is used by code in module sp_adjust. If no
         X and/or Y arrays are provided via this method, spectral
-        components added to the SummedCompositeModel will be
-        initialized to a default set of parameter values.
+        components added to the compound model will be initialized
+        to a default set of parameter values.
         
         Parameters
         ----------
@@ -841,7 +869,7 @@ class SpectralModelManager(QObject):
         return self.models_gui.model.items
 
     def spectrum(self, wave):
-        ''' Computes the SummedCompositeModel for a given
+        ''' Computes the compound model for a given
         array of spectral coordinate values.
 
         Parameters
@@ -856,8 +884,8 @@ class SpectralModelManager(QObject):
 
         '''
         if len(self.components) > 0:
-            sum_of_models = SummedCompositeModel(self.components)
-            return sum_of_models(wave)
+            compound_model = _compoundModel(self.components)
+            return compound_model(wave)
         else:
             return np.zeros(len(wave))
 
@@ -920,6 +948,8 @@ class SpectralModelManager(QObject):
             for j, value in enumerate(c.parameters):
                 item = self.models_gui.model.item(i).child(j).child(0)
                 item.setData("value: " + str(value), role=Qt.DisplayRole)
+
+
 
 
 class SignalModelChanged(signal_slot.Signal):
