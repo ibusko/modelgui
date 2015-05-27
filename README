@@ -51,7 +51,9 @@ Demo driver for the code in sp_model_manager.py. Run it to
 see the basic sp_widget in action (right-click on the tree
 elements brings up contextual menus):
 
-% python mm_widget_demo.py
+% python mm_widget_demo.py test1()
+
+(test2() has a hard-coded path name; only works on camino.stsci.edu)
 
 
 - models_registry.py:

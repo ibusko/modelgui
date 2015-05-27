@@ -1,5 +1,6 @@
 from __future__ import division
 
+import os, sys
 import math
 import re
 import numpy as np
@@ -14,6 +15,20 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 FONT_SIZE_INCREASE = 2
+
+
+# Builds a compound model specified in a .py file.
+
+def buildModelFromFile(fname):
+    d = os.path.dirname(str(fname))
+    sys.path.append(d)
+
+    f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
+    import_statement = "import " + f + " as module"
+
+    exec import_statement in locals(), locals()
+    compound_model = module.model1 #TODO need to fix this - how to get variable name form file?
+    return compound_model
 
 
 # Finds the level at which a tree is being selected.
@@ -338,15 +353,14 @@ class _SpectralModelsWindow(_BaseWindow):
                 print("name = '" + str(item.name) + "',")
 
     def readModel(self):
-        import sys
-        sys.path.append('/Users/busko/Projects/specfit/proto/')
-        exec "import " + "n5548_models" + " as m" in locals(), locals()
-        model = m.model1
+        fname = QFileDialog.getOpenFileName(self, 'Open file', '/home')
 
-        for i, model in enumerate(m.model1._submodels):
-            name = m.model1._submodels_names[i]
-            for j, param_name in enumerate(model.param_names):
-                print '@@@@@@     line: 349  - ',name, param_name
+        compound_model = buildModelFromFile(fname)
+
+        for i, model in enumerate(compound_model._submodels):
+            self.model.addOneElement(model)
+
+
 
 
 
@@ -603,7 +617,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
     def addToModel(self, name, element):
         # add component to tree root
-        item = SpectralComponentItem(name)
+        item = SpectralComponentItem(name + " (" + str(element.name) + ")")
         item.setDataItem(element)
         parent = self.invisibleRootItem()
         parent.appendRow(item)
@@ -685,20 +699,26 @@ class SpectralModelManager(QObject):
 
     Parameters
     ----------
-    model: list, optional
+    model: list or string, optional
       List with instances of spectral components from
       astropy.modeling.functional_models. If not provided,
       the instance will be initialized with an empty list.
+      Or it can be a string with a fully specified file name
+      which contains a compound model specification.
 
     """
     def __init__(self, model=None):
         super(SpectralModelManager, self).__init__()
 
-        self._model = model
+        if model == None:
+            self._model = []
+        elif type(model) == type(list):
+            self._model = model
+        else:
+            self._model = buildModelFromFile(model)
+
         self.x = None
         self.y = None
-        if not self._model:
-            self._model = []
 
         self.changed = SignalModelChanged()
         self.selected = SignalComponentSelected()
@@ -753,7 +773,10 @@ class SpectralModelManager(QObject):
         # This specific form of the conditional avoids a mishap
         # when self._model is an empty list.
         if model != None:
-            self._model = model
+            if type(model) == type([]):
+                self._model = model
+            else:
+                self._model = buildModelFromFile(model)
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
