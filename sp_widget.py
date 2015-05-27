@@ -19,9 +19,11 @@ FONT_SIZE_INCREASE = 2
 
 # Builds a compound model specified in a .py file.
 
+_model_directory = os.environ["HOME"]
+
 def buildModelFromFile(fname):
-    d = os.path.dirname(str(fname))
-    sys.path.append(d)
+    directory = os.path.dirname(str(fname))
+    sys.path.append(directory)
 
     f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
     import_statement = "import " + f + " as module"
@@ -39,10 +41,10 @@ def buildModelFromFile(fname):
                 # passes is assumed to be a valid compound model definition.
                 if (str(type(module.__dict__[variable]))).find('astropy.modeling.core._ModelMeta') < 0:
                     compound_model = module.__dict__[variable]
-                    return compound_model
-        return None
+                    return compound_model, directory
+        return None,None
     except:
-        return None
+        return None,None
 
 
 # Finds the level at which a tree is being selected.
@@ -367,9 +369,9 @@ class _SpectralModelsWindow(_BaseWindow):
                 print("name = '" + str(item.name) + "',")
 
     def readModel(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open file', '/home')
-
-        compound_model = buildModelFromFile(fname)
+        global _model_directory
+        fname = QFileDialog.getOpenFileName(self, 'Open file', _model_directory)
+        compound_model, _model_directory = buildModelFromFile(fname)
 
         if compound_model:
             for i, model in enumerate(compound_model._submodels):
@@ -724,7 +726,8 @@ class SpectralModelManager(QObject):
         elif type(model) == type(list):
             self._model = model
         else:
-            self._model = buildModelFromFile(model)
+            global _model_directory
+            self._model, _model_directory = buildModelFromFile(model)
 
         self.x = None
         self.y = None
@@ -785,7 +788,8 @@ class SpectralModelManager(QObject):
             if type(model) == type([]):
                 self._model = model
             else:
-                self._model = buildModelFromFile(model)
+                global _model_directory
+                self._model, _model_directory = buildModelFromFile(model)
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
