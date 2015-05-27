@@ -26,9 +26,23 @@ def buildModelFromFile(fname):
     f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
     import_statement = "import " + f + " as module"
 
-    exec import_statement in locals(), locals()
-    compound_model = module.model1 #TODO need to fix this - how to get variable name form file?
-    return compound_model
+    try:
+        exec import_statement in locals(), locals()
+
+        # this will pick up the first model defined in the file. A different
+        # mechanism is needed to handle files with multiple model definitions.
+        for variable in dir(module):
+            if not variable.startswith('__'):
+                # this assumes that the module contains only model definitions and
+                # imports for the functional types used in the model definitions.
+                # This 'if' statement ignores the function types, everything that
+                # passes is assumed to be a valid compound model definition.
+                if (str(type(module.__dict__[variable]))).find('astropy.modeling.core._ModelMeta') < 0:
+                    compound_model = module.__dict__[variable]
+                    return compound_model
+        return None
+    except:
+        return None
 
 
 # Finds the level at which a tree is being selected.
@@ -357,14 +371,9 @@ class _SpectralModelsWindow(_BaseWindow):
 
         compound_model = buildModelFromFile(fname)
 
-        for i, model in enumerate(compound_model._submodels):
-            self.model.addOneElement(model)
-
-
-
-
-
-
+        if compound_model:
+            for i, model in enumerate(compound_model._submodels):
+                self.model.addOneElement(model)
 
 
 # Parameter values can be edited directly from their QStandardItem
