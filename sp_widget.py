@@ -50,13 +50,15 @@ class _MyQTreeView(QTreeView):
 
     # By providing button instances, the specialized
     # behavior is triggered on.
-    def setButtons(self, b_up, b_down, b_delete):
+    def setButtons(self, b_up, b_down, b_delete, b_save, model):
         self.b_up = b_up
         self.b_down = b_down
         self.b_delete = b_delete
+        self.b_save = b_save
         self.b_up.setEnabled(False)
         self.b_down.setEnabled(False)
         self.b_delete.setEnabled(False)
+        self.b_save.setEnabled(model and len(model.items) > 0)
 
     # Overrides QTreeView to provide
     # sensitivity to selection events.
@@ -254,7 +256,7 @@ class _SpectralModelsWindow(_BaseWindow):
         self.button_layout.addWidget(save_button)
 
         # setup to gray out buttons based on context.
-        self.treeView.setButtons(up_button, down_button, delete_button)
+        self.treeView.setButtons(up_button, down_button, delete_button, save_button, model)
 
     # contextual menu
     def openMenu(self, position):
