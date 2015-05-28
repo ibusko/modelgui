@@ -30,7 +30,8 @@ def test1():
 
 def test2():
     # optional initial model is defined in an import file
-    fname = "/Users/busko/Projects/specfit/proto/n5548_models.py"
+    # fname = "/Users/busko/Projects/specfit/proto/n5548_models.py"
+    fname = sys.argv[2]
 
     # start manager and interact with the GUI
     manager = SpectralModelManagerApp(fname)
