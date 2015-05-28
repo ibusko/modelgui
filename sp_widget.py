@@ -37,7 +37,7 @@ def buildModelFromFile(fname):
             if not variable.startswith('__'):
                 # this assumes that the module contains only model definitions and
                 # imports for the functional types used in the model definitions.
-                # This 'if' statement ignores the function types, everything that
+                # This 'if' statement skips the function types, everything that
                 # passes is assumed to be a valid compound model definition.
                 if (str(type(module.__dict__[variable]))).find('astropy.modeling.core._ModelMeta') < 0:
                     compound_model = module.__dict__[variable]
@@ -49,11 +49,11 @@ def buildModelFromFile(fname):
 
 # Builds a compound model by adding together all components in
 # the list. This must be replaced by more capable code that can
-# apply different kinds of operators to the components. It all
-# depends on how compound models will handle components that
-# are themselves instances of compound models.
+# apply different kinds of operators to the components. It will
+# depend as well on how compound models will handle components
+# that are themselves instances of a compound model.
 
-def _compoundModel(components):
+def _buildSummedCompoundModel(components):
     result = components[0]
     if len(components) > 1:
         for component in components[1:]:
@@ -236,20 +236,7 @@ class _BaseWindow(QWidget):
 
 class _SpectralModelsGUI(object):
     def __init__(self, components):
-
-
-        #TODO 'components' can be either a list or an instance of CompoundModel.
-        # either build a compound model here and pass it to ActiveComponentsModel,
-        # or pass it directly. That way, ActiveComponentsModel will store both the
-        # list and the compound model. The it will have the job to keep them in
-        # synch with each other.
-
-
-
-
-        self.model = ActiveComponentsModel(name="Active components")
-        self.model.addItems(components)
-
+        self.model = ActiveComponentsModel(components, name="Active components")
         self.window = _SpectralModelsWindow(self.model)
 
         self.mapper = QDataWidgetMapper()
@@ -323,7 +310,7 @@ class _SpectralModelsWindow(_BaseWindow):
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
 
-        expression = _compoundModel(model.items)._format_expression()
+        expression = model.compound_model._format_expression()
         self.expression_field.setText(expression)
 
         # setup to gray out buttons based on context.
@@ -655,9 +642,21 @@ def _float_check(value):
 # the parameter names of each component, and each parameter's
 # editable attributes.
 class ActiveComponentsModel(SpectralComponentsModel):
-    def __init__(self, name):
+    def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
+        self.addItems(components)
+
         self.itemChanged.connect(self._onItemChanged)
+
+        # 'components' can be either a list of function components, or
+        # an already built instance of CompoundModel. In this case, the
+        # rules for combining the components are already built-in in the
+        # instance. For a plain list, we adopt for now a simple sum of
+        # components.
+        if type(components) == type([]):
+            self.compound_model = _buildSummedCompoundModel(components)
+        else:
+            self.compound_model = components
 
     # TODO use QDataWidgetMapper
     # this violation of MVC design principles is necessary
@@ -899,7 +898,7 @@ class SpectralModelManager(QObject):
 
         '''
         if len(self.components) > 0:
-            compound_model = _compoundModel(self.components)
+            compound_model = _buildSummedCompoundModel(self.components)
             return compound_model(wave)
         else:
             return np.zeros(len(wave))
