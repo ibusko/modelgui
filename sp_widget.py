@@ -54,6 +54,8 @@ def buildModelFromFile(fname):
 # that are themselves instances of a compound model.
 
 def _buildSummedCompoundModel(components):
+    if len(components) < 1:
+        return None
     result = components[0]
     if len(components) > 1:
         for component in components[1:]:
@@ -312,7 +314,10 @@ class _SpectralModelsWindow(_BaseWindow):
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
 
-        expression = model.compound_model._format_expression()
+        compound_model = model.compound_model
+        expression = ""
+        if compound_model:
+            expression = compound_model._format_expression()
         self.expression_field.setText(expression)
 
         # setup to gray out buttons based on context.
@@ -836,9 +841,6 @@ class SpectralModelManager(QObject):
         # Subsequent calls must re-use the existing trees
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
-
-            #TODO model is either a list or a string. Use this information to select the proper way of building the compound model.
-
             self.models_gui = _SpectralModelsGUI(self._model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y)
 

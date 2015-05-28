@@ -39,6 +39,12 @@ def test2():
     debug_print(manager)
 
 
+def test3():
+    manager = SpectralModelManagerApp()
+
+    debug_print(manager)
+
+
 if __name__ == "__main__":
     exec sys.argv[1]
 
