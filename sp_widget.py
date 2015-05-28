@@ -329,7 +329,7 @@ class _SpectralModelsWindow(_BaseWindow):
         self.expression_field.setText(expression)
 
         # setup to gray out buttons based on context.
-        self.treeView.setButtons(up_button, down_button, delete_button, save_button, model)
+        self.treeView.setButtons(up_button, down_button, delete_button, self.save_button, model)
 
         # connect signals.
         self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
