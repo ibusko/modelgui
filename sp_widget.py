@@ -397,6 +397,21 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
+
+        #TODO the expression should be parsed so constructs of type '[i]' will
+        # have their contents replaced by the i-th item in the model list.
+        expression = self.model.compound_model._format_expression()
+        print '@@@@@@     line: 404  - ',expression
+
+        print '@@@@@@     line: 406  - ', re.split(r'[0-9]', expression)
+
+        # index = expression.find('[')
+        # print '@@@@@@     line: 406  - ', index
+        # index = expression.find(']',index)
+        # print '@@@@@@     line: 409  - ', index
+
+
+
         for item in self.model.items:
             if item.name:
                 print("name = '" + str(item.name) + "',")
