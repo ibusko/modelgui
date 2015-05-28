@@ -1,9 +1,10 @@
 from __future__ import division
 
+import os, sys
 import math
 import re
 import numpy as np
-from astropy.modeling import Parameter, Fittable1DModel, SummedCompositeModel
+from astropy.modeling import Parameter, Fittable1DModel
 from astropy.modeling.polynomial import PolynomialModel
 
 import signal_slot
@@ -14,6 +15,50 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 FONT_SIZE_INCREASE = 2
+
+
+# Builds a compound model specified in a .py file.
+
+_model_directory = os.environ["HOME"]
+
+def buildModelFromFile(fname):
+    directory = os.path.dirname(str(fname))
+    sys.path.append(directory)
+
+    f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
+    import_statement = "import " + f + " as module"
+
+    try:
+        exec import_statement in locals(), locals()
+
+        # this will pick up the first model defined in the file. A different
+        # mechanism is needed to handle files with multiple model definitions.
+        for variable in dir(module):
+            if not variable.startswith('__'):
+                # this assumes that the module contains only model definitions and
+                # imports for the functional types used in the model definitions.
+                # This 'if' statement ignores the function types, everything that
+                # passes is assumed to be a valid compound model definition.
+                if (str(type(module.__dict__[variable]))).find('astropy.modeling.core._ModelMeta') < 0:
+                    compound_model = module.__dict__[variable]
+                    return compound_model, directory
+        return None,None
+    except:
+        return None,None
+
+
+# Builds a compound model by adding together all components in
+# the list. This must be replaced by more capable code that can
+# apply different kinds of operators to the components. It all
+# depends on how compound models will handle components that
+# are themselves instances of compound models.
+
+def _compoundModel(components):
+    result = components[0]
+    if len(components) > 1:
+        for component in components[1:]:
+            result += component
+    return result
 
 
 # Finds the level at which a tree is being selected.
@@ -140,11 +185,14 @@ class _BaseWindow(QWidget):
         grid_layout = QGridLayout()
         grid_layout.addWidget(self.treeView, 0, 0)
 
-        # button_layout is not used by this class but provides a
-        # place where sub classes can put in their own widgets.
+        # the following are not used by this class but provide
+        # places where sub classes can put in their own widgets.
+        self.expression_layout = QHBoxLayout()
+        grid_layout.addLayout(self.expression_layout, 1, 0)
+
         self.button_layout = QHBoxLayout()
         self.button_layout.addStretch()
-        grid_layout.addLayout(self.button_layout, 1, 0)
+        grid_layout.addLayout(self.button_layout, 2, 0)
 
         self.setLayout(grid_layout)
 
@@ -190,6 +238,17 @@ class _BaseWindow(QWidget):
 
 class _SpectralModelsGUI(object):
     def __init__(self, components):
+
+
+        #TODO 'components' can be either a list or an instance of CompoundModel.
+        # either build a compound model here and pass it to ActiveComponentsModel,
+        # or pass it directly. That way, ActiveComponentsModel will store both the
+        # list and the compound model. The it will have the job to keep them in
+        # synch with each other.
+
+
+
+
         self.model = ActiveComponentsModel(name="Active components")
         self.model.addItems(components)
 
@@ -244,19 +303,43 @@ class _SpectralModelsWindow(_BaseWindow):
 
         delete_button = QPushButton('Delete', self)
         delete_button.setFocusPolicy(Qt.NoFocus)
-        delete_button.setToolTip('Delete selected component from ModelManager instance')
+        delete_button.setToolTip('Remove selected component from model manager instance')
         self.connect(delete_button, SIGNAL('clicked()'), self.deleteComponent)
         self.button_layout.addWidget(delete_button)
 
-        # save button is not accessible from contextual menus.
-        save_button = QPushButton('Save', self)
-        save_button.setFocusPolicy(Qt.NoFocus)
-        save_button.setToolTip('Save model to file.')
-        self.connect(save_button, SIGNAL('clicked()'), self.saveModel)
-        self.button_layout.addWidget(save_button)
+        # read and save buttons are not accessible from contextual menus.
+        self.read_button = QPushButton('Read', self)
+        self.read_button.setFocusPolicy(Qt.NoFocus)
+        self.read_button.setToolTip('Rad model from file.')
+        self.button_layout.addWidget(self.read_button)
+
+        self.save_button = QPushButton('Save', self)
+        self.save_button.setFocusPolicy(Qt.NoFocus)
+        self.save_button.setToolTip('Save model to file.')
+        self.button_layout.addWidget(self.save_button)
+
+        # expression text field
+        self.expression_field = QLineEdit('Expression goes here blah b;ah b;ah', self)
+        self.expression_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.expression_field.setFocusPolicy(Qt.NoFocus)
+        self.expression_field.setToolTip('Model expression.')
+        self.expression_layout.addWidget(self.expression_field)
+
+        expression = _compoundModel(model.items)._format_expression()
+        self.expression_field.setText(expression)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button, save_button, model)
+
+        # connect signals.
+        self.connect(self.save_button, SIGNAL('clicked()'), self.saveModel)
+        self.connect(self.read_button, SIGNAL('clicked()'), self.readModel)
+        self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
+
+    # this will change the Save button appearance depending on how many
+    # components are stored in the current active list.
+    def _setSaveButtonLooks(self):
+        self.save_button.setEnabled(len(self.model.items) > 0)
 
     # contextual menu
     def openMenu(self, position):
@@ -322,7 +405,21 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-        pass
+        for item in self.model.items:
+            if item.name:
+                print("name = '" + str(item.name) + "',")
+
+    def readModel(self):
+        global _model_directory # retains memory of last visited directory
+        fname = QFileDialog.getOpenFileName(self, 'Open file', _model_directory)
+        compound_model, _model_directory = buildModelFromFile(fname)
+
+        if compound_model:
+            for i, model in enumerate(compound_model._submodels):
+                self.model.addOneElement(model)
+
+            self.expression_field.setText(compound_model._format_expression())
+
 
 # Parameter values can be edited directly from their QStandardItem
 # representation. The code below (still incomplete) is an attempt
@@ -345,7 +442,7 @@ class _SpectralModelsWindow(_BaseWindow):
 
 
 
-# Window with the spectral component library ------------------------------------------------
+# Window with the spectral component library ----------------------------------
 
 class _SpectralLibraryGUI(object):
 
@@ -370,11 +467,15 @@ class _SpectralLibraryGUI(object):
             # if issubclass(function.__class__, Fittable1DModel) or \
             #    issubclass(function.__class__, PolynomialModel):
             # TODO Polynomials do not carry internal instances of
-            # Parameter. This makes the code in this module unusable.
-            # We need to add special handling tools that can get and
-            # set polynomial coefficients. Thus suggests that they
-            # were not designed t be mixed in with instances of
-            # Fittable1DModel.
+            # Parameter. This makes the code in this module unusable,
+            # since it relies on the existence of parameter instances
+            # in the spectral model functions. To make it usable, we
+            # need to add special handling code that can get and set
+            # polynomial coefficients. Thus suggests that polynomials
+            # were not designed to be mixed in with instances of
+            # Fittable1DModel. This could make sense from a software
+            # design standpoint, but it is hardly what the use cases
+            # seem to imply.
             if issubclass(function.__class__, Fittable1DModel):
                 data.append(function)
 
@@ -570,7 +671,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
     def addToModel(self, name, element):
         # add component to tree root
-        item = SpectralComponentItem(name)
+        item = SpectralComponentItem(name + " (" + str(element.name) + ")")
         item.setDataItem(element)
         parent = self.invisibleRootItem()
         parent.appendRow(item)
@@ -644,28 +745,34 @@ class SpectralModelManager(QObject):
     It is responsible for building the GUI trees and putting them together
     into a split pane layout. It also provides accessors to the active
     model individual spectral components and to the library functions,
-    as well as to the composite spectrum that results from a
-    SummedCompositeModel call.
+    as well as to the spectrum that results from a compound model  call.
 
     It inherits from QObject for the sole purpose of being able to
     respond to Qt signals.
 
     Parameters
     ----------
-    model: list, optional
+    model: list or string, optional
       List with instances of spectral components from
       astropy.modeling.functional_models. If not provided,
       the instance will be initialized with an empty list.
+      Or it can be a string with a fully specified file name
+      which contains a compound model specification.
 
     """
     def __init__(self, model=None):
         super(SpectralModelManager, self).__init__()
 
-        self._model = model
+        if model == None:
+            self._model = []
+        elif type(model) == type(list):
+            self._model = model
+        else:
+            global _model_directory
+            self._model, _model_directory = buildModelFromFile(model)
+
         self.x = None
         self.y = None
-        if not self._model:
-            self._model = []
 
         self.changed = SignalModelChanged()
         self.selected = SignalComponentSelected()
@@ -683,8 +790,8 @@ class SpectralModelManager(QObject):
 
         This region is used by code in module sp_adjust. If no
         X and/or Y arrays are provided via this method, spectral
-        components added to the SummedCompositeModel will be
-        initialized to a default set of parameter values.
+        components added to the compound model will be initialized
+        to a default set of parameter values.
         
         Parameters
         ----------
@@ -720,19 +827,27 @@ class SpectralModelManager(QObject):
         # This specific form of the conditional avoids a mishap
         # when self._model is an empty list.
         if model != None:
-            self._model = model
+            if type(model) == type([]):
+                self._model = model
+            else:
+                global _model_directory
+                self._model, _model_directory = buildModelFromFile(model)
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
+
+            #TODO model is either a list or a string. Use this information to select the proper way of building the compound model.
+
             self.models_gui = _SpectralModelsGUI(self._model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y)
 
         splitter = QSplitter();
         splitter.addWidget(self.models_gui.window)
         splitter.addWidget(self._library_gui.window)
-        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
 
         # Tree and data change and click events must
         # be propagated to the outside world.
@@ -771,7 +886,7 @@ class SpectralModelManager(QObject):
         return self.models_gui.model.items
 
     def spectrum(self, wave):
-        ''' Computes the SummedCompositeModel for a given
+        ''' Computes the compound model for a given
         array of spectral coordinate values.
 
         Parameters
@@ -786,8 +901,8 @@ class SpectralModelManager(QObject):
 
         '''
         if len(self.components) > 0:
-            sum_of_models = SummedCompositeModel(self.components)
-            return sum_of_models(wave)
+            compound_model = _compoundModel(self.components)
+            return compound_model(wave)
         else:
             return np.zeros(len(wave))
 
@@ -850,6 +965,8 @@ class SpectralModelManager(QObject):
             for j, value in enumerate(c.parameters):
                 item = self.models_gui.model.item(i).child(j).child(0)
                 item.setData("value: " + str(value), role=Qt.DisplayRole)
+
+
 
 
 class SignalModelChanged(signal_slot.Signal):

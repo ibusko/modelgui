@@ -28,7 +28,17 @@ def test1():
     debug_print(manager)
     
 
+def test2():
+    # optional initial model is defined in an import file
+    fname = "/Users/busko/Projects/specfit/proto/n5548_models.py"
+
+    # start manager and interact with the GUI
+    manager = SpectralModelManagerApp(fname)
+
+    debug_print(manager)
+
+
 if __name__ == "__main__":
-    test1()
+    exec sys.argv[1]
 
 

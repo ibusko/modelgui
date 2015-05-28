@@ -40,7 +40,7 @@ class Signal(object):
         to_be_removed = []
         emitters = self._methods.copy()
         for obj, funcs in emitters.items():
-            msg_debug('obj is type "{}"'.format(type(obj)))
+            print ('obj is type "{}"'.format(type(obj)))
             for func in funcs.copy():
                 try:
                     func(obj, *args, **kargs)
