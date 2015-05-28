@@ -47,6 +47,20 @@ def buildModelFromFile(fname):
         return None,None
 
 
+# Builds a compound model by adding together all components in
+# the list. This must be replaced by more capable code that can
+# apply different kinds of operators to the components. It all
+# depends on how compound models will handle components that
+# are themselves instances of compound models.
+
+def _compoundModel(components):
+    result = components[0]
+    if len(components) > 1:
+        for component in components[1:]:
+            result += component
+    return result
+
+
 # Finds the level at which a tree is being selected.
 # Also finds the index for the zero-th level parent
 # that is associated with the selected item.
@@ -222,6 +236,17 @@ class _BaseWindow(QWidget):
 
 class _SpectralModelsGUI(object):
     def __init__(self, components):
+
+
+        #TODO 'components' can be either a list or an instance of CompoundModel.
+        # either build a compound model here and pass it to ActiveComponentsModel,
+        # or pass it directly. That way, ActiveComponentsModel will store both the
+        # list and the compound model. The it will have the job to keep them in
+        # synch with each other.
+
+
+
+
         self.model = ActiveComponentsModel(name="Active components")
         self.model.addItems(components)
 
@@ -293,12 +318,13 @@ class _SpectralModelsWindow(_BaseWindow):
 
         # expression text field
         self.expression_field = QLineEdit('Expression goes here blah b;ah b;ah', self)
-
         self.expression_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
         self.expression_field.setFocusPolicy(Qt.NoFocus)
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
+
+        expression = _compoundModel(model.items)._format_expression()
+        self.expression_field.setText(expression)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button)
@@ -382,7 +408,7 @@ class _SpectralModelsWindow(_BaseWindow):
                 print("name = '" + str(item.name) + "',")
 
     def readModel(self):
-        global _model_directory
+        global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getOpenFileName(self, 'Open file', _model_directory)
         compound_model, _model_directory = buildModelFromFile(fname)
 
@@ -711,20 +737,6 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self._floatItemChanged(item)
 
 
-# Builds a compound model by adding together all components in
-# the list. This must be replaced by more capable code that can
-# apply different kinds of operators to the components. It all
-# depends on how compound models will handle components that
-# are themselves instances of compound models.
-
-def _compoundModel(components):
-    result = components[0]
-    if len(components) > 1:
-        for component in components[1:]:
-            result += component
-    return result
-
-
 class SpectralModelManager(QObject):
     """ Basic class to be called by external code.
 
@@ -823,6 +835,9 @@ class SpectralModelManager(QObject):
         # Subsequent calls must re-use the existing trees
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
+
+            #TODO model is either a list or a string. Use this information to select the proper way of building the compound model.
+
             self.models_gui = _SpectralModelsGUI(self._model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y)
 
