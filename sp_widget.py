@@ -314,6 +314,9 @@ class _SpectralModelsWindow(_BaseWindow):
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
 
+        # we keep a compound model instance in parallel with its list
+        # representation. The main purpose of this is to keep the
+        # compound model expression at hand at all times.
         compound_model = model.compound_model
         expression = ""
         if compound_model:
