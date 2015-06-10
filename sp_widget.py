@@ -409,12 +409,11 @@ class _SpectralModelsWindow(_BaseWindow):
         expression = self.model.compound_model._format_expression()
         print '@@@@@@     line: 404  - ',expression
 
-        print '@@@@@@     line: 406  - ', re.split(r'[0-9]', expression)
+        tokens = re.split(r'[0-9]+', expression)
+        for token in tokens:
+            print '@@@@@@     line: 414  - ',token
 
-        # index = expression.find('[')
-        # print '@@@@@@     line: 406  - ', index
-        # index = expression.find(']',index)
-        # print '@@@@@@     line: 409  - ', index
+
 
 
 

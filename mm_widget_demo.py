@@ -19,8 +19,11 @@ def debug_print(manager):
 
 
 def test1():
-    # optional initial model is a list of component instances:
-    components = [models.Gaussian1D(2.0, 2.0, 2.0), models.Lorentz1D(3.0, 3.0, 3.0), models.GaussianAbsorption1D(0.1, 0.1, 0.1)]
+    # optional initial model is a list of component instances.
+    # Note that a tie refers to other components by the 'name' attribute.
+    components = [models.Gaussian1D(2.0, 2.0, 2.0, name='test_name_1'), \
+                  models.Lorentz1D(3.0, 3.0, 3.0, tied = {'fwhm':lambda m: 1.2 * m['test_name_1'].stddev}),
+                  models.GaussianAbsorption1D(0.1, 0.1, 0.1)]
 
     # start manager and interact with the GUI
     manager = SpectralModelManagerApp(components)
