@@ -17,6 +17,7 @@ import sp_adjust
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+AVAILABLE_COMPONENTS = "Available components"
 FONT_SIZE_INCREASE = 2
 
 
@@ -313,9 +314,9 @@ class _SpectralModelsWindow(_BaseWindow):
         # expression text field
         self.expression_field = QLineEdit('Expression goes here blah b;ah b;ah', self)
         self.expression_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        # self.expression_field.setFocusPolicy(Qt.NoFocus)
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
+        self.expression_field.setFocusPolicy(Qt.NoFocus)  # remove to enable editing
 
         # we keep a compound model instance in parallel with its list
         # representation. The main purpose of this is to keep the
@@ -491,10 +492,17 @@ class _SpectralLibraryGUI(object):
             if issubclass(function.__class__, Fittable1DModel):
                 data.append(function)
 
-        self.model = SpectralComponentsModel(name="Available components")
+        self.model = SpectralComponentsModel(name=AVAILABLE_COMPONENTS)
         self.model.addItems(data)
 
-        self.window = _LibraryWindow(self.model, models_gui, x, y)
+
+
+#TODO  add switching in between either mode
+
+
+
+        # self.window = _LibraryWindow(self.model, models_gui, x, y)
+        self.window = _LibraryComboBox(self.model, models_gui, x, y)
 
     def getSelectedModel(self):
         return self.window.getSelectedModel()
@@ -568,18 +576,44 @@ class _LibraryWindow(_BaseWindow):
         self.x = x
         self.y = y
 
-    # this method adds the selected component to the active model.
+    # Adds the selected component to the active model.
     def _addComponentToActive(self, component):
         name = models_registry.getComponentName(component)
 
+        self.finalizeAddingComponent(name)
+
+    def finalizeAddingComponent(self, name):
         # this should be done by instantiating from a class, but that is
         # not possible yet (the astropy dev version can't be compiled due
         # to a Cython syntax error...). So we resort to brute force and
         # copy the instances instead.
-        component = models_registry.registry[name].copy()
-        if component:
-            sp_adjust.adjust(component, self.x, self.y)
-            self.models_gui.updateModel(component)
+        if name in models_registry.registry:
+            component = models_registry.registry[name].copy()
+            if component:
+                sp_adjust.adjust(component, self.x, self.y)
+                self.models_gui.updateModel(component)
+
+
+class _LibraryComboBox(QComboBox, _LibraryWindow):
+    def __init__(self, model, models_gui, x, y):
+        _LibraryWindow.__init__(self, model, models_gui, x, y)
+
+        self.addItem(AVAILABLE_COMPONENTS)
+
+        nrows = self.model.rowCount()
+        for i in range(nrows):
+            index = self.model.index(i, 0)
+            data = self.model.data(index)
+
+            self.addItem(data.toString())
+
+        self.activated.connect(self._addSelectedComponent)
+
+    # Returns the selected model.
+    def _addSelectedComponent(self):
+        name = str(self.currentText())
+
+        self.finalizeAddingComponent(name)
 
 
 # The MVC Model classes -----------------------------------------
@@ -691,7 +725,7 @@ class SpectralComponentTiedItem(SpectralComponentItem):
 
 # This class provides the base model for both the active
 # and the library windows. The base model handles the
-# first tree level, where the component names are held.
+# tree's first level, where the component names are held.
 
 class SpectralComponentsModel(QStandardItemModel):
     def __init__(self, name):
@@ -788,8 +822,6 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 fixedItem = SpectralComponentValueItem(par, "fixed", checkable=True)
                 fixedItem.setDataItem(par.fixed)
                 parItem.appendRow(fixedItem)
-                # 'tied' is not really a boolean, but a callable.
-                # How to handle this in a GUI?
                 tiedItem = SpectralComponentTiedItem(par)
                 tiedItem.setDataItem(par.tied)
                 parItem.appendRow(tiedItem)
@@ -929,11 +961,21 @@ class SpectralModelManager(QObject):
             self.models_gui = _SpectralModelsGUI(self._model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y)
 
-        splitter = QSplitter();
-        splitter.addWidget(self.models_gui.window)
-        splitter.addWidget(self._library_gui.window)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 0)
+
+
+#TODO  add switching in between either mode
+
+
+
+        # main_widget = QSplitter();
+        # main_widget.addWidget(self.models_gui.window)
+        # main_widget.addWidget(self._library_gui.window)
+        # main_widget.setStretchFactor(0, 1)
+        # main_widget.setStretchFactor(1, 0)
+
+        main_widget = QMainWindow();
+        main_widget.setMenuWidget(self._library_gui.window)
+        main_widget.setCentralWidget(self.models_gui.window)
 
         # Tree and data change and click events must
         # be propagated to the outside world.
@@ -941,7 +983,7 @@ class SpectralModelManager(QObject):
         self.connect(self.models_gui.window.treeView, SIGNAL("dataChanged"), self._broadcastChangedSignal)
         self.models_gui.window.treeView.clicked.connect(self._broadcastSelectedSignal)
 
-        return splitter
+        return main_widget
 
     def _broadcastChangedSignal(self):
         self.changed()
