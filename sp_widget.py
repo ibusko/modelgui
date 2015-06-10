@@ -503,6 +503,7 @@ class _SpectralLibraryGUI(object):
     def setArrays(self, x, y):
         self.window.setArrays(x, y)
 
+
 class _LibraryWindow(_BaseWindow):
     def __init__(self, model, models_gui, x, y):
         super(_LibraryWindow, self).__init__(model)
@@ -589,6 +590,7 @@ class _LibraryWindow(_BaseWindow):
 # Base item is a QStandardItem with the ability to directly
 # hold a reference to the spectral object being represented
 # in the tree.
+
 class SpectralComponentItem(QStandardItem):
     def __init__(self, name):
         QStandardItem.__init__(self)
@@ -603,11 +605,13 @@ class SpectralComponentItem(QStandardItem):
     def getDataItem(self):
         return self.item
 
+
 # Value item specializes the base item to make it editable.
 # or checkable. The slot connected to the tree model's
 # itemChanged signal must be able to differentiate among the
 # several possible items, using the 'type' attribute and the
 # 'isCheckable' property.
+
 class SpectralComponentValueItem(SpectralComponentItem):
     def __init__(self, parameter, type, checkable=False, editable=True):
         self.parameter = parameter
@@ -624,25 +628,32 @@ class SpectralComponentValueItem(SpectralComponentItem):
         if checkable and getattr(self.parameter, type):
             self.setCheckState(Qt.Checked)
 
+
 # Tied item specializes the base item to handle the specifics
-# of a callable tie.  The slot connected to the tree model's
+# of a callable tie. The slot connected to the tree model's
 # itemChanged signal must be able to differentiate among the
 # several possible items, using the 'type' attribute and the
-# 'isCheckable' property.
+# 'isCheckable' property. This is not necessary for now, since
+# this item type is being defined as non-editable. For now, the
+# only way for the user to modify a tie is to directly edit
+# an importable file with the model definition.
+
 class SpectralComponentTiedItem(SpectralComponentItem):
-
-    parser = re.compile(r'\(([^)]+)\)')
-
     def __init__(self, parameter):
         self.parameter = parameter
         self.type = "tied"
-        id_str = self.type + ": " + self._get_tie_text()
+
+        tie = getattr(self.parameter, self.type)
+        id_str = self.type + ": " + self._get_tie_text(tie)
+
         SpectralComponentItem.__init__(self, id_str)
         self.setEditable(False)  # for now!!
         self.setCheckable(False)
 
-    def _get_tie_text(self):
-        tie = getattr(self.parameter, self.type)
+    # Disassembles a tie callable. Ties read from a model
+    # file are not directly accessible in text form because
+    # the model file is compiled at import time.
+    def _get_tie_text(self, tie):
         if tie:
             # dis() only outputs on standard output.....
             backup = sys.stdout
@@ -656,6 +667,12 @@ class SpectralComponentTiedItem(SpectralComponentItem):
             result = 'False'
         return result
 
+    # This parses the text returned by the disassembler for
+    # a lambda function that multiplies a constant by a
+    # variable. That is, we are assuming that ties are coded
+    # as lambda functions with multiplication by a constant,
+    # as in STSDAS' specfit.
+    parser = re.compile(r'\(([^)]+)\)') # picks up whatever is enclosed in parenthesis
     def _parse_tie_text(self, text):
         tokens = self.parser.findall(text)
         factor = tokens[0]
@@ -663,7 +680,12 @@ class SpectralComponentTiedItem(SpectralComponentItem):
         function_id = tokens[2]
         par_name = tokens[3]
 
-        return "lambda %s: %s *  %s[%s].%s" % (lambda_variable_name, factor, lambda_variable_name, function_id, par_name)
+        return "lambda %s: %s *  %s[%s].%s" % \
+               (lambda_variable_name,
+                factor,
+                lambda_variable_name,
+                function_id,
+                par_name)
 
 
 # Model classes
@@ -671,6 +693,7 @@ class SpectralComponentTiedItem(SpectralComponentItem):
 # This class provides the base model for both the active
 # and the library windows. The base model handles the
 # first tree level, where the component names are held.
+
 class SpectralComponentsModel(QStandardItemModel):
     def __init__(self, name):
         QStandardItemModel.__init__(self)
@@ -710,6 +733,7 @@ def _float_check(value):
 # two additional tree levels. These levels hold respectively
 # the parameter names of each component, and each parameter's
 # editable attributes.
+
 class ActiveComponentsModel(SpectralComponentsModel):
     def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
