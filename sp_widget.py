@@ -3,6 +3,9 @@ from __future__ import division
 import os, sys
 import math
 import re
+import dis
+from cStringIO import StringIO
+
 import numpy as np
 from astropy.modeling import Parameter, Fittable1DModel
 from astropy.modeling.polynomial import PolynomialModel
@@ -310,7 +313,7 @@ class _SpectralModelsWindow(_BaseWindow):
         # expression text field
         self.expression_field = QLineEdit('Expression goes here blah b;ah b;ah', self)
         self.expression_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.expression_field.setFocusPolicy(Qt.NoFocus)
+        # self.expression_field.setFocusPolicy(Qt.NoFocus)
         self.expression_field.setToolTip('Model expression.')
         self.expression_layout.addWidget(self.expression_field)
 
@@ -618,6 +621,47 @@ class SpectralComponentValueItem(SpectralComponentItem):
         if checkable and getattr(self.parameter, type):
             self.setCheckState(Qt.Checked)
 
+# Tied item specializes the base item to handle the specifics
+# of a callable tie.  The slot connected to the tree model's
+# itemChanged signal must be able to differentiate among the
+# several possible items, using the 'type' attribute and the
+# 'isCheckable' property.
+class SpectralComponentTiedItem(SpectralComponentItem):
+
+    parser = re.compile(r'\(([^)]+)\)')
+
+    def __init__(self, parameter):
+        self.parameter = parameter
+        self.type = "tied"
+        id_str = self.type + ": " + self._get_tie_text()
+        SpectralComponentItem.__init__(self, id_str)
+        self.setEditable(False)  # for now!!
+        self.setCheckable(False)
+
+    def _get_tie_text(self):
+        tie = getattr(self.parameter, self.type)
+        if tie:
+            # dis() only outputs on standard output.....
+            backup = sys.stdout
+            sys.stdout = StringIO()
+            dis.dis(tie)
+            result = sys.stdout.getvalue()
+            sys.stdout.close()
+            sys.stdout = backup
+            result = self._parse_tie_text(result)
+        else:
+            result = 'False'
+        return result
+
+    def _parse_tie_text(self, text):
+        tokens = self.parser.findall(text)
+        factor = tokens[0]
+        lambda_variable_name = tokens[1]
+        function_id = tokens[2]
+        par_name = tokens[3]
+
+        return "lambda %s: %s *  %s[%s].%s" % (lambda_variable_name, factor, lambda_variable_name, function_id, par_name)
+
 
 # Model classes
 
@@ -720,7 +764,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 parItem.appendRow(fixedItem)
                 # 'tied' is not really a boolean, but a callable.
                 # How to handle this in a GUI?
-                tiedItem = SpectralComponentValueItem(par, "tied", editable=False)
+                tiedItem = SpectralComponentTiedItem(par)
                 tiedItem.setDataItem(par.tied)
                 parItem.appendRow(tiedItem)
 

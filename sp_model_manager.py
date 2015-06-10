@@ -29,7 +29,7 @@ class SpectralModelManagerApp(SpectralModelManager):
 
         mainPanel = self.buildMainPanel(model)
         mainPanel.show()
-        mainPanel.resize(700, 400)
+        mainPanel.resize(1000, 600)
 
         app.exec_()
 
