@@ -663,8 +663,8 @@ class SpectralComponentValueItem(SpectralComponentItem):
 # several possible items, using the 'type' attribute and the
 # 'isCheckable' property. This is not necessary for now, since
 # this item type is being defined as non-editable. For now, the
-# only way for the user to modify a tie is to directly edit
-# an importable file with the model definition.
+# only way for the user to modify a tie is to directly edit an
+# importable file with the model definition.
 
 class SpectralComponentTiedItem(SpectralComponentItem):
     def __init__(self, parameter):
@@ -687,10 +687,10 @@ class SpectralComponentTiedItem(SpectralComponentItem):
             backup = sys.stdout
             sys.stdout = StringIO()
             dis.dis(tie)
-            result = sys.stdout.getvalue()
+            assembler_text = sys.stdout.getvalue()
             sys.stdout.close()
             sys.stdout = backup
-            result = self._parse_tie_text(result)
+            result = self._parse_assembler_text(assembler_text)
         else:
             result = 'False'
         return result
@@ -701,7 +701,7 @@ class SpectralComponentTiedItem(SpectralComponentItem):
     # as lambda functions with multiplication by a constant,
     # as in STSDAS' specfit.
     parser = re.compile(r'\(([^)]+)\)') # picks up whatever is enclosed in parenthesis
-    def _parse_tie_text(self, text):
+    def _parse_assembler_text(self, text):
         tokens = self.parser.findall(text)
         factor = tokens[0]
         lambda_variable_name = tokens[1]
