@@ -793,6 +793,12 @@ class ActiveComponentsModel(SpectralComponentsModel):
         item.setDataItem(element)
         parent = self.invisibleRootItem()
         parent.appendRow(item)
+
+        nameItem = SpectralComponentValueItem(element, "name")
+        nameItem.setDataItem(element.name)
+        nameItem.setEditable(False)
+        item.appendRow(nameItem)
+
         # now add parameters to component in tree.
         for e in element.param_names:
             par = element.__getattribute__(e)
