@@ -276,21 +276,30 @@ def _displayGUI(manager, name):
 
 
 # Main class. The user interactively creates instances of this to
-# manage a spectral model in each instance. For now, each instance
-# starts with an empty model by default; the user then uses the GUI
-# to add spectral functions to the model, and modify their parameter
-# values and sequence of evaluation in the composite.
+# manage a spectral model in each instance. Each instance starts
+# with an empty model by default; the user then uses the GUI to add
+# spectral functions to the model, and modify their parameter values
+# and sequence of evaluation in the composite. Optionally the instance
+# can be created with an already pre-loaded list of spectral components,
+# either from a python list object, or from a file in the format of a
+# importable specfit model specification.
 
 class ModelManager(object):
     """ Instances of this class hold a compound model spectral model.
 
     A ModelManager instance contains a user-definable list of spectral
     components from astropy.modeling.functional_models. From that list,
-    a compound model is built and used to compute flux values,
-    given spectral coordinate values. The list of spectral components
-    in any particular instance of ModelManager is displayed on screen,
-    in a tabbed pane, and can be interacted with so that individual
-    parameter values can be examined or set by the user.
+    and from a suitable mathematical expression, a compound model is
+    built and used to compute flux values, given spectral coordinate
+    values.
+
+    The list of spectral components in any particular instance of ModelManager
+    is displayed on screen, in a tabbed pane, and can  be interacted with
+    so that individual parameter values can be examined or set by the user.
+    Components can be interactively added or removed from the list, and
+    the list can be initialized when the model manager instance is created,
+    from either a python list or a file. The file should specify a compound
+    model following the 'specfit' format.
 
     This class is basically a wrap-around of SpectralModelManager, to
     make it available to interactive users with a Python command prompt.
@@ -301,7 +310,7 @@ class ModelManager(object):
     trigger signals of type SignalModelChanged. These signals can be
     caught with code that looks like this:
 
-    managerInstance.changed.connect(handleSignal.....)
+    modelManagerInstance.changed.connect(handleSignal.....)
 
 
     Parameters
@@ -312,21 +321,29 @@ class ModelManager(object):
       be picked from the next unused string in the sequence
       '1', '2', '3', ....
 
-    model: list, optional
-      List with instances of spectral components from
-      astropy.modeling.functional_models. If not provided,
-      the instance will be initialized with an empty
+    model: list or str, optional
+      Either a python list with instances of spectral components from
+      astropy.modeling.functional_models, or the name of a file which
+      contains a compound model specification in 'specfit' format.
+      If not provided, the instance will be initialized with an empty
       compound model.
 
-    Example:
+    drop_down: boolean, optional
+      Defines GUI looks. Default is True, meaning that the available
+      spectral components from the astropy.modeling.models library
+      are accessed via a drop down menu. If set to False, the
+      components are accessed via a list on a separate window.
+
+    Examples:
     -------
       How to create an instance:
 
         mm1 = ModelManager()
         mm2 = ModelManager('test1')
-        mm3 = ModelManager(model=[Gaussian1D(1.,1.,1.)])
+        mm3 = ModelManager(model=[Gaussian1D(1.,1.,1.)],,drop_down=False)
         mm4 = ModelManager(model=[Gaussian1D(1.,1.,1.), Lorentz1D(1.,1.,1.)])
         mm5 = ModelManager("test2", [Gaussian1D(1.,1.,1.), Lorentz1D(1.,1.,1.)])
+        mm6 = ModelManager("Model_N5548", model='/Users/busko/Projects/specfit/proto/n5548_models.py')
 
       How to catch a signal:
 
@@ -344,9 +361,9 @@ class ModelManager(object):
         Hello!
         >>>
     """
-    def __init__(self, name=None, model=None):
+    def __init__(self, name=None, model=None, drop_down=True):
 
-        self.manager = SpectralModelManager(model)
+        self.manager = SpectralModelManager(model, drop_down=drop_down)
 
         _displayGUI(self, name)
 

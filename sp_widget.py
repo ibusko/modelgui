@@ -470,7 +470,7 @@ class _SpectralLibraryGUI(object):
     #
     #     self.window = LibraryWindow(data, models_gui)
 
-    def __init__(self, models_gui, x, y):
+    def __init__(self, models_gui, x, y, drop_down=True):
         data = []
         keys = sorted(models_registry.registry.keys())
         for key in keys:
@@ -495,14 +495,10 @@ class _SpectralLibraryGUI(object):
         self.model = SpectralComponentsModel(name=AVAILABLE_COMPONENTS)
         self.model.addItems(data)
 
-
-
-#TODO  add switching in between either mode
-
-
-
-        # self.window = _LibraryWindow(self.model, models_gui, x, y)
-        self.window = _LibraryComboBox(self.model, models_gui, x, y)
+        if drop_down:
+            self.window = _LibraryComboBox(self.model, models_gui, x, y)
+        else:
+            self.window = _LibraryWindow(self.model, models_gui, x, y)
 
     def getSelectedModel(self):
         return self.window.getSelectedModel()
@@ -576,7 +572,7 @@ class _LibraryWindow(_BaseWindow):
         self.x = x
         self.y = y
 
-    # Adds the selected component to the active model.
+    # Adds the selected spectral model component to the active model.
     def _addComponentToActive(self, component):
         name = models_registry.getComponentName(component)
 
@@ -609,10 +605,9 @@ class _LibraryComboBox(QComboBox, _LibraryWindow):
 
         self.activated.connect(self._addSelectedComponent)
 
-    # Returns the selected model.
+    # Adds the selected spectral components.
     def _addSelectedComponent(self):
         name = str(self.currentText())
-
         self.finalizeAddingComponent(name)
 
 
@@ -880,8 +875,14 @@ class SpectralModelManager(QObject):
       Or it can be a string with a fully specified file name
       which contains a compound model specification.
 
+    drop_down: boolean, optional
+      Defines GUI looks. Default is True, meaning that the available
+      spectral components from the astropy.modeling.models library
+      are accessed via a drop down menu. If set to False, the
+      components are accessed via a list on a separate window.
+
     """
-    def __init__(self, model=None):
+    def __init__(self, model=None, drop_down=True):
         super(SpectralModelManager, self).__init__()
 
         if model == None:
@@ -891,6 +892,8 @@ class SpectralModelManager(QObject):
         else:
             global _model_directory
             self._model, _model_directory = buildModelFromFile(model)
+
+        self._drop_down = drop_down
 
         self.x = None
         self.y = None
@@ -959,26 +962,20 @@ class SpectralModelManager(QObject):
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
             self.models_gui = _SpectralModelsGUI(self._model)
-            self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y)
+            self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y, drop_down=self._drop_down)
 
+        if self._drop_down:
+            main_widget = QMainWindow();
+            main_widget.setMenuWidget(self._library_gui.window)
+            main_widget.setCentralWidget(self.models_gui.window)
+        else:
+            main_widget = QSplitter();
+            main_widget.addWidget(self.models_gui.window)
+            main_widget.addWidget(self._library_gui.window)
+            main_widget.setStretchFactor(0, 1)
+            main_widget.setStretchFactor(1, 0)
 
-
-#TODO  add switching in between either mode
-
-
-
-        # main_widget = QSplitter();
-        # main_widget.addWidget(self.models_gui.window)
-        # main_widget.addWidget(self._library_gui.window)
-        # main_widget.setStretchFactor(0, 1)
-        # main_widget.setStretchFactor(1, 0)
-
-        main_widget = QMainWindow();
-        main_widget.setMenuWidget(self._library_gui.window)
-        main_widget.setCentralWidget(self.models_gui.window)
-
-        # Tree and data change and click events must
-        # be propagated to the outside world.
+        # Data change and click events must be propagated to the outside world.
         self.connect(self.models_gui.window, SIGNAL("treeChanged"), self._broadcastChangedSignal)
         self.connect(self.models_gui.window.treeView, SIGNAL("dataChanged"), self._broadcastChangedSignal)
         self.models_gui.window.treeView.clicked.connect(self._broadcastSelectedSignal)

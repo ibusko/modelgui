@@ -32,7 +32,7 @@ class SpectralModelManager():
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
             self.models_gui = sp_widget._SpectralModelsGUI(self._model)
-            self._library_gui = sp_widget._SpectralLibraryGUI(self.models_gui)
+            self._library_gui = sp_widget._SpectralLibraryGUI(self.models_gui, drop_down=False)
 
         splitter = QSplitter();
         splitter.addWidget(self.models_gui.window)
