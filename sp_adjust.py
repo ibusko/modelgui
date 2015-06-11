@@ -44,7 +44,7 @@ class _LineProfile1DAdjuster(object):
         position = x_range / 2.0 + x[0]
         width = x_range / 50.
 
-        name = models_registry.getComponentName(instance)
+        name = models_registry.get_component_name(instance)
 
         _setattr(instance, name, 'amplitude', y_range * self._factor)
         _setattr(instance, name, 'position', position)
@@ -107,7 +107,7 @@ def adjust(instance, x, y):
     if x is None or y is None:
         return instance
 
-    name = models_registry.getComponentName(instance)
+    name = models_registry.get_component_name(instance)
     try:
         adjuster = _adjusters[name]
         return adjuster.adjust(instance, x, y)

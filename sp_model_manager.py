@@ -236,7 +236,7 @@ class _ModelManagerWidget(QTabWidget):
             window.model.endRemoveRows()
             for k in row_range:
                 component = component_list[k]
-                name = models_registry.getComponentName(component)
+                name = models_registry.get_component_name(component)
                 window.model.addToModel(name, component)
 
     # Overrides the default behavior so as to ignore window closing
