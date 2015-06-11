@@ -408,15 +408,6 @@ class _SpectralModelsWindow(_BaseWindow):
         #TODO the expression should be parsed so constructs of type '[i]' will
         # have their contents replaced by the i-th item in the model list.
 
-        #TODO use of special functions from specfit.custom_models causes
-        # discrepancies in parameter names. Specifically, the way the powerlaw
-        # function is defined there causes the 'amp' parameter to revert to
-        # the astropy name 'amplitude'. Either change it to the default, or
-        # redefine powerlaw in a way that it works transparently.
-        # This needs to be first solved in the 'specfit' project itself.
-        # Once done there, come back here.
-
-
         expression = self.model.compound_model._format_expression()
         tokens = re.split(r'[0-9]+', expression)
         result = ""
@@ -427,25 +418,26 @@ class _SpectralModelsWindow(_BaseWindow):
             result += str(token) + self._assemble_component_spec(component)
 
 
-        print '@@@@@@     line: 419  - ',result
+        print '@@@@@@     line: 419  - \n',result
 
 
 
     def _assemble_component_spec(self, component):
         result = ""
         result += models_registry.get_component_name(component)
-        result += "("
+        result += "(name = "
+        result += component.name + ",\n"
 
-        for param_name in component.param_names:
+        for i, param_name in enumerate(component.param_names):
+            result += "            " + param_name
+            result += " = "
+            result += str(component.parameters[i]) + ",\n"
 
-            result += param_name
 
 
 
 
-            result += ","
-
-        result += ")\n"
+        result += "            )\n"
         return result
 
 
