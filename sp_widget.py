@@ -84,6 +84,44 @@ def findLevelAndIndex(indices):
     return level, index0
 
 
+# Disassembles a tie callable. Ties read from a model
+# file are not directly accessible in text form because
+# the model file is compiled at import time.
+def get_tie_text(tie):
+    if tie:
+        # dis() only outputs on standard output.....
+        backup = sys.stdout
+        sys.stdout = StringIO()
+        dis.dis(tie)
+        assembler_text = sys.stdout.getvalue()
+        sys.stdout.close()
+        sys.stdout = backup
+        result = _parse_assembler_text(assembler_text)
+    else:
+        result = 'False'
+    return result
+
+# This parses the text returned by the disassembler for
+# a lambda function that multiplies a constant by a
+# variable. That is, we are assuming that ties are coded
+# as lambda functions with multiplication by a constant,
+# as in STSDAS' specfit.
+parser = re.compile(r'\(([^)]+)\)') # picks up whatever is enclosed in parenthesis
+def _parse_assembler_text(text):
+    tokens = parser.findall(text)
+    factor = tokens[0]
+    lambda_variable_name = tokens[1]
+    function_id = tokens[2]
+    par_name = tokens[3]
+
+    return "lambda %s: %s *  %s[%s].%s" % \
+           (lambda_variable_name,
+            factor,
+            lambda_variable_name,
+            function_id,
+            par_name)
+
+
 # Subclasses QTreeView in order to detect selections on tree elements
 # and enable/disable other GUI elements accordingly.
 
@@ -424,16 +462,44 @@ class _SpectralModelsWindow(_BaseWindow):
 
     def _assemble_component_spec(self, component):
         result = ""
-        result += models_registry.get_component_name(component)
-        result += "(name = "
-        result += component.name + ",\n"
 
+        # function name
+        result += models_registry.get_component_name(component)
+
+        # component name
+        if component.name:
+            result += "(name = "
+            result += component.name + ",\n"
+        else:
+            result += "(\n"
+
+        # parameter names and values
         for i, param_name in enumerate(component.param_names):
             result += "            " + param_name
             result += " = "
             result += str(component.parameters[i]) + ",\n"
 
+        # parameter bounds
+        bounds = component.bounds
+        result += "            bounds = {\n"
+        for param_name in component.param_names:
+            result += "                     '" + param_name + "': " + str(bounds[param_name]) + ",\n"
+        result += "                     },\n"
 
+        # parameter fixed flag
+        fixed = component.fixed
+        result += "            fixed = {\n"
+        for param_name in component.param_names:
+            result += "                     '" + param_name + "': " + str(fixed[param_name]) + ",\n"
+        result += "                     },\n"
+
+        # parameter ties
+        ties = component.tied
+        result += "            tied = {\n"
+        for param_name in component.param_names:
+            tie_text = get_tie_text(ties[param_name])
+            result += "                    '" + param_name + "': " + tie_text + ",\n"
+        result += "                     },\n"
 
 
 
@@ -703,48 +769,11 @@ class SpectralComponentTiedItem(SpectralComponentItem):
         self.type = "tied"
 
         tie = getattr(self.parameter, self.type)
-        id_str = self.type + ": " + self._get_tie_text(tie)
+        id_str = self.type + ": " + get_tie_text(tie)
 
         SpectralComponentItem.__init__(self, id_str)
         self.setEditable(False)  # for now!!
         self.setCheckable(False)
-
-    # Disassembles a tie callable. Ties read from a model
-    # file are not directly accessible in text form because
-    # the model file is compiled at import time.
-    def _get_tie_text(self, tie):
-        if tie:
-            # dis() only outputs on standard output.....
-            backup = sys.stdout
-            sys.stdout = StringIO()
-            dis.dis(tie)
-            assembler_text = sys.stdout.getvalue()
-            sys.stdout.close()
-            sys.stdout = backup
-            result = self._parse_assembler_text(assembler_text)
-        else:
-            result = 'False'
-        return result
-
-    # This parses the text returned by the disassembler for
-    # a lambda function that multiplies a constant by a
-    # variable. That is, we are assuming that ties are coded
-    # as lambda functions with multiplication by a constant,
-    # as in STSDAS' specfit.
-    parser = re.compile(r'\(([^)]+)\)') # picks up whatever is enclosed in parenthesis
-    def _parse_assembler_text(self, text):
-        tokens = self.parser.findall(text)
-        factor = tokens[0]
-        lambda_variable_name = tokens[1]
-        function_id = tokens[2]
-        par_name = tokens[3]
-
-        return "lambda %s: %s *  %s[%s].%s" % \
-               (lambda_variable_name,
-                factor,
-                lambda_variable_name,
-                function_id,
-                par_name)
 
 
 # Model classes
