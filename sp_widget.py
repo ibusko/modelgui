@@ -20,11 +20,11 @@ from PyQt4.QtGui import *
 AVAILABLE_COMPONENTS = "Available components"
 FONT_SIZE_INCREASE = 2
 
-
-# Builds a compound model specified in a .py file.
-
+# To memorize last visited directory.
 _model_directory = os.environ["HOME"]
 
+
+# Builds a compound model specified in a .py file.
 def buildModelFromFile(fname):
     directory = os.path.dirname(str(fname))
     sys.path.append(directory)
@@ -462,6 +462,12 @@ class _SpectralModelsWindow(_BaseWindow):
         # TODO Write expression string to file.
         # print '@@@@@@     line: 463  - \n',expression_string
 
+        global _model_directory # retains memory of last visited directory
+        fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
+
+        f = os.open(fname, os.O_RDWR|os.O_CREAT)
+        os.write(f, expression_string)
+        os.close(f)
 
     def _assemble_component_spec(self, component):
         # Builds an operand for an astropy compound model.
@@ -472,8 +478,8 @@ class _SpectralModelsWindow(_BaseWindow):
 
         # component name
         if component.name:
-            result += "(name = "
-            result += component.name + ",\n"
+            result += "(name = \'"
+            result += component.name + "\',\n"
         else:
             result += "(\n"
 
@@ -505,7 +511,7 @@ class _SpectralModelsWindow(_BaseWindow):
             result += "                    '" + param_name + "': " + tie_text + ",\n"
         result += "                   },\n"
 
-        result += "            )\n"
+        result += "            ) \\ \n"
         return result
 
     def readModel(self):
