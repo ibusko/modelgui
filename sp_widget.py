@@ -442,25 +442,29 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-
-        #TODO the expression should be parsed so constructs of type '[i]' will
-        # have their contents replaced by the i-th item in the model list.
-
+        # Build model expression inside a string.
+        #
+        # This assumes that the expression in an astropy compound
+        # model has operands of the form [0], [1], etc, that is,
+        # a sequential number enclosed in square brackets.
         expression = self.model.compound_model._format_expression()
+
         tokens = re.split(r'[0-9]+', expression)
-        result = ""
+
+        expression_string = ""
         for token, component in zip(tokens, self.model.items):
-            token = token.replace('[','')  # clean up from astropy-inserted
-            token = token.replace(']','')  # characters
+            # clean up astropy-inserted characters
+            token = token.replace('[','')
+            token = token.replace(']','')
 
-            result += str(token) + self._assemble_component_spec(component)
+            expression_string += str(token) + self._assemble_component_spec(component)
 
-
-        print '@@@@@@     line: 419  - \n',result
-
+        # TODO Write expression string to file.
+        # print '@@@@@@     line: 463  - \n',expression_string
 
 
     def _assemble_component_spec(self, component):
+        # Builds an operand for an astropy compound model.
         result = ""
 
         # function name
@@ -486,12 +490,12 @@ class _SpectralModelsWindow(_BaseWindow):
             result += "                     '" + param_name + "': " + str(bounds[param_name]) + ",\n"
         result += "                     },\n"
 
-        # parameter fixed flag
+        # parameter fixed flags
         fixed = component.fixed
         result += "            fixed = {\n"
         for param_name in component.param_names:
             result += "                     '" + param_name + "': " + str(fixed[param_name]) + ",\n"
-        result += "                     },\n"
+        result += "                    },\n"
 
         # parameter ties
         ties = component.tied
@@ -499,25 +503,10 @@ class _SpectralModelsWindow(_BaseWindow):
         for param_name in component.param_names:
             tie_text = get_tie_text(ties[param_name])
             result += "                    '" + param_name + "': " + tie_text + ",\n"
-        result += "                     },\n"
-
-
+        result += "                   },\n"
 
         result += "            )\n"
         return result
-
-
-
-#   component.param_names    tuple with parameter names
-#   component.parameters     ndarray with paired parameter values
-#   component.fixed          dict with boolean flags
-#   component.tied           dict with boolean flags or lambda functions
-#   component.bounds         dict with bounds; each bound is a 2-float tuple
-
-
-
-
-
 
     def readModel(self):
         global _model_directory # retains memory of last visited directory
