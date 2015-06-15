@@ -52,10 +52,8 @@ def buildModelFromFile(fname):
 
 
 # Builds a compound model by adding together all components in
-# the list. This must be replaced by more capable code that can
-# apply different kinds of operators to the components. It will
-# depend as well on how compound models will handle components
-# that are themselves instances of a compound model.
+# the list. This is used when the input offers no clue on how
+# to combine the components.
 
 def _buildSummedCompoundModel(components):
     if len(components) < 1:
@@ -501,8 +499,8 @@ class _SpectralModelsWindow(_BaseWindow):
 
         # function name - Note that get_component_name works
         # pretty much independently of the models registry.
-        # Any astropy model will work because the function
-        # name is derived from the component's __class__.
+        # Any model will work because the function name is
+        # derived from the component's __class__.
         name = models_registry.get_component_name(component)
         result += name
 
@@ -558,9 +556,9 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), 0)
 
     def _update_compound_model(self, compound_model):
-        # if a compound model already exists, add the new model
-        # to it in a simple additive fashion. That is, using the
-        # language of the model expression, the new model is
+        # if a compound model already exists, add the new compound
+        # model to it in a simple additive fashion. That is, using
+        # the language of the model expression, the new model is
         # appended at the end of the existing model, with a '+'
         # operator in between. It remains to be seen if this is
         # the actual desired behavior, or something more flexible
@@ -890,7 +888,10 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
     def addToModel(self, name, element):
         # add component to tree root
-        item = SpectralComponentItem(name + " (" + str(element.name) + ")")
+        if element.name:
+            item = SpectralComponentItem(name + " (" + str(element.name) + ")")
+        else:
+            item = SpectralComponentItem(name)
         item.setDataItem(element)
         parent = self.invisibleRootItem()
         parent.appendRow(item)
