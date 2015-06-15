@@ -101,6 +101,7 @@ def get_tie_text(tie):
         result = 'False'
     return result
 
+
 # This parses the text returned by the disassembler for
 # a lambda function that multiplies a constant by a
 # variable. That is, we are assuming that ties are coded
@@ -374,9 +375,12 @@ class _SpectralModelsWindow(_BaseWindow):
         self.connect(self, SIGNAL("treeChanged"), self._setSaveButtonLooks)
 
     # this will change the Save button appearance depending on how many
-    # components are stored in the current active list.
+    # components are stored in the current active list. For now we don't
+    # allow single components to be saved to file, since the concept
+    # itself is mostly useful for saving complex compound models. It
+    # remains to be seen if this assumption will hold under user scrutiny.
     def _setSaveButtonLooks(self):
-        self.save_button.setEnabled(len(self.model.items) > 0)
+        self.save_button.setEnabled(len(self.model.items) > 1)
 
     # contextual menu
     def openMenu(self, position):
@@ -451,7 +455,11 @@ class _SpectralModelsWindow(_BaseWindow):
 
         tokens = re.split(r'[0-9]+', expression)
 
+        # this loop builds the main expression, and captures
+        # information needed for building the file header (where
+        # the import statements go).
         expression_string = ""
+        import_module_names = {}
         for token, component in zip(tokens, self.model.items):
             # clean up astropy-inserted characters
             token = token.replace('[','')
@@ -459,13 +467,31 @@ class _SpectralModelsWindow(_BaseWindow):
 
             expression_string += str(token) + self._assemble_component_spec(component)
 
-        # TODO Write expression string to file.
-        # print '@@@@@@     line: 463  - \n',expression_string
+            # here we store the module paths for each component. Using
+            # a dictionary key ensures that we get only one of each.
+            path = models_registry.get_component_path(component)
+            name = models_registry.get_component_name(component)
+            import_module_names[name] = path
+
+        # this loop now uses the captured information from above to
+        # build a set of import statements that go at the beginning
+        # of the file.
+        prolog = ""
+        for name, path in import_module_names.iteritems():
+            prolog += "from " + path + " import " + name + "\n"
+        prolog += "\n"
+        # we need to add a reference to the model so it can actually
+        # be used. We just use 'model1' for the variable name. This
+        # also implicitly assumes that only one model will be stored
+        # in the file. It remains to be seen how useful this assumption
+        # will be in practice.
+        prolog += "model1 = \\\n"
 
         global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
 
         f = os.open(fname, os.O_RDWR|os.O_CREAT)
+        os.write(f, prolog)
         os.write(f, expression_string)
         os.close(f)
 
@@ -473,8 +499,12 @@ class _SpectralModelsWindow(_BaseWindow):
         # Builds an operand for an astropy compound model.
         result = ""
 
-        # function name
-        result += models_registry.get_component_name(component)
+        # function name - Note that get_component_name works
+        # pretty much independently of the models registry.
+        # Any astropy model will work because the function
+        # name is derived from the component's __class__.
+        name = models_registry.get_component_name(component)
+        result += name
 
         # component name
         if component.name:
@@ -511,7 +541,7 @@ class _SpectralModelsWindow(_BaseWindow):
             result += "                    '" + param_name + "': " + tie_text + ",\n"
         result += "                   },\n"
 
-        result += "            ) \\ \n"
+        result += "            ) \\\n"
         return result
 
     def readModel(self):

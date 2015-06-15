@@ -31,5 +31,11 @@ registry = {
 
 def get_component_name(function):
     # there must be a better way of getting the class' name......
-    name = str(function.__class__)
-    return name.split('\'>')[0].split(".")[-1]
+    class_string = str(function.__class__)
+    return class_string.split('\'>')[0].split(".")[-1]
+
+
+def get_component_path(function):
+    class_string = str(function.__class__)
+    module_path = class_string.split('\'')[1].split('.')[:-1][0]
+    return module_path
