@@ -37,5 +37,7 @@ def get_component_name(function):
 
 def get_component_path(function):
     class_string = str(function.__class__)
-    module_path = class_string.split('\'')[1].split('.')[:-1][0]
+    module_path = class_string.split('\'')[1]
+    index = module_path.rfind('.')
+    module_path = module_path[:index]
     return module_path
