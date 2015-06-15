@@ -553,7 +553,23 @@ class _SpectralModelsWindow(_BaseWindow):
             for i, model in enumerate(compound_model._submodels):
                 self.model.addOneElement(model)
 
-            self.expression_field.setText(compound_model._format_expression())
+            self._update_compound_model(compound_model)
+
+            self.emit(SIGNAL("treeChanged"), 0)
+
+    def _update_compound_model(self, compound_model):
+        # if a compound model already exists, add the new model
+        # to it in a simple additive fashion. That is, using the
+        # language of the model expression, the new model is
+        # appended at the end of the existing model, with a '+'
+        # operator in between. It remains to be seen if this is
+        # the actual desired behavior, or something more flexible
+        # should be provided.
+        if self.model.compound_model:
+            compound_model = self.model.compound_model + compound_model
+        self.model.compound_model = compound_model
+        self.expression_field.setText(self.model.compound_model._format_expression())
+
 
 
 # Parameter values can be edited directly from their QStandardItem
@@ -952,7 +968,7 @@ class SpectralModelManager(QObject):
     It is responsible for building the GUI trees and putting them together
     into a split pane layout. It also provides accessors to the active
     model individual spectral components and to the library functions,
-    as well as to the spectrum that results from a compound model  call.
+    as well as to the spectrum that results from a compound model call.
 
     It inherits from QObject for the sole purpose of being able to
     respond to Qt signals.
