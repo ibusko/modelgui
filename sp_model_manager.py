@@ -263,10 +263,26 @@ def _displayGUI(manager, name):
     global __dialog
     if not __dialog:
         global __app
-        __app = QApplication([])
         if __app is None:
             __app = pyqtapplication()
+
+            # since I upgraded to pyqt 4.11.3, the QT input hook turned
+            # *extremely* slow. The terminal is not usable anymore once the
+            # QApplication gets created. One can try disabling / re-enabling
+            # the input hook with functions:
+            #
+            # pyqtRemoveInputHook()
+            # pyqtRestoreInputHook()
+            #
+            # These functions were developed with pdb (ugh!) users in mind
+            # though. They are not meant to be used to fix a problems like
+            # the one at hand now. If we call pyqtRemoveInputHook, the command
+            # line response time gets back to normal, but the GUI freezes with
+            # the spinning beach ball. Calling pyqtRestoreInputHook causes the
+            # bug to reappear.
+
         __dialog = _ModelManagerWidget(manager.manager, name)
+
     else:
         __dialog._addManager(manager.manager, name)
         __dialog.setVisible(True)
