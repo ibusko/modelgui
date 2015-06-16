@@ -281,8 +281,9 @@ def _displayGUI(manager, name):
 # spectral functions to the model, and modify their parameter values
 # and sequence of evaluation in the composite. Optionally the instance
 # can be created with an already pre-loaded list of spectral components,
-# either from a python list object, or from a file in the format of a
-# importable specfit model specification.
+# either from a python list object, from a file in the format of an
+# importable specfit model specification, or directly as a Python
+# variable that references an instance of a compound model.
 
 class ModelManager(object):
     """ Instances of this class hold a compound model spectral model.
@@ -294,12 +295,12 @@ class ModelManager(object):
     values.
 
     The list of spectral components in any particular instance of ModelManager
-    is displayed on screen, in a tabbed pane, and can  be interacted with
-    so that individual parameter values can be examined or set by the user.
-    Components can be interactively added or removed from the list, and
-    the list can be initialized when the model manager instance is created,
-    from either a python list or a file. The file should specify a compound
-    model following the 'specfit' format.
+    is displayed on screen, in either a tabbed pane or a single window, and
+    can  be interacted with so that individual parameter values can be examined
+    or set by the user. Components can be interactively added or removed from
+    the list, and the list can be initialized when the model manager instance
+    is created, from either a python list, a file, or a variable. The file
+    should specify a compound model following the 'specfit' format.
 
     This class is basically a wrap-around of SpectralModelManager, to
     make it available to interactive users with a Python command prompt.
