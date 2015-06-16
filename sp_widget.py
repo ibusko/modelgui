@@ -146,7 +146,7 @@ class _MyQTreeView(QTreeView):
         self.b_up.setEnabled(False)
         self.b_down.setEnabled(False)
         self.b_delete.setEnabled(False)
-        self.b_save.setEnabled(model and len(model.items) > 0)
+        self.b_save.setEnabled(model and len(model.items) > 1)
 
     # Overrides QTreeView to provide
     # sensitivity to selection events.
@@ -444,13 +444,13 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-        # Build model expression inside a string.
-        #
-        # This assumes that the expression in an astropy compound
-        # model has operands of the form [0], [1], etc, that is,
-        # a sequential number enclosed in square brackets.
-        expression = self.model.compound_model._format_expression()
+        # Build model expression inside a string, and dumps
+        # string to file.
 
+        # The following assumes that the formatted string expression
+        # in an astropy compound model has operands of the form [0], [1],
+        # etc, that is, a sequential number enclosed in square brackets.
+        expression = self.model.compound_model._format_expression()
         tokens = re.split(r'[0-9]+', expression)
 
         # this loop builds the main expression, and captures
@@ -479,12 +479,13 @@ class _SpectralModelsWindow(_BaseWindow):
             prolog += "from " + path + " import " + name + "\n"
         prolog += "\n"
         # we need to add a reference to the model so it can actually
-        # be used. We just use 'model1' for the variable name. This
-        # also implicitly assumes that only one model will be stored
-        # in the file. It remains to be seen how useful this assumption
-        # will be in practice.
+        # be used after imported. We just use 'model1' for the variable
+        # name. This also implicitly assumes that only one model will be
+        # stored in the file. It remains to be seen how useful this
+        # assumption will be in practice.
         prolog += "model1 = \\\n"
 
+        # Write to file.
         global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
 
@@ -531,7 +532,8 @@ class _SpectralModelsWindow(_BaseWindow):
             result += "                     '" + param_name + "': " + str(fixed[param_name]) + ",\n"
         result += "                    },\n"
 
-        # parameter ties
+        # parameter ties. Ties have to be disassembled and parsed
+        # in order to become human-readable and writable to file.
         ties = component.tied
         result += "            tied = {\n"
         for param_name in component.param_names:
@@ -631,6 +633,7 @@ class _SpectralLibraryGUI(object):
         self.model = SpectralComponentsModel(name=AVAILABLE_COMPONENTS)
         self.model.addItems(data)
 
+        # Look-and-feel can be based either on a split pane or a drop down menu.
         if drop_down:
             self.window = _LibraryComboBox(self.model, models_gui, x, y)
         else:
@@ -715,10 +718,9 @@ class _LibraryWindow(_BaseWindow):
         self.finalizeAddingComponent(name)
 
     def finalizeAddingComponent(self, name):
-        # this should be done by instantiating from a class, but that is
-        # not possible yet (the astropy dev version can't be compiled due
-        # to a Cython syntax error...). So we resort to brute force and
-        # copy the instances instead.
+        # this should perhaps be done by instantiating from a
+        # class. We instead resort to brute force and copy the
+        # instance instead. It works
         if name in models_registry.registry:
             component = models_registry.registry[name].copy()
             if component:
@@ -967,7 +969,8 @@ class SpectralModelManager(QObject):
     """ Basic class to be called by external code.
 
     It is responsible for building the GUI trees and putting them together
-    into a split pane layout. It also provides accessors to the active
+    into a split pane layout. An alternate, single pane plus drop-down
+    menu, is also available. The class also provides accessors to the active
     model individual spectral components and to the library functions,
     as well as to the spectrum that results from a compound model call.
 
@@ -987,7 +990,8 @@ class SpectralModelManager(QObject):
       Defines GUI looks. Default is True, meaning that the available
       spectral components from the astropy.modeling.models library
       are accessed via a drop down menu. If set to False, the
-      components are accessed via a list on a separate window.
+      components are accessed from a separate tree on a split pane
+      window.
 
     """
     def __init__(self, model=None, drop_down=True):
@@ -1052,7 +1056,7 @@ class SpectralModelManager(QObject):
 
         Returns
         -------
-          instance of QSplitter
+          instance of either QMainWindow or QSplitter
 
         """
         # override whatever model was passed to the constructor.
@@ -1073,10 +1077,14 @@ class SpectralModelManager(QObject):
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y, drop_down=self._drop_down)
 
         if self._drop_down:
+            # window contains the active tree in the central
+            # widget, and the library tree in the menu widget.
             main_widget = QMainWindow();
             main_widget.setMenuWidget(self._library_gui.window)
             main_widget.setCentralWidget(self.models_gui.window)
         else:
+            # split window contains the active tree in the first
+            # pane and library tree in the second pane.
             main_widget = QSplitter();
             main_widget.addWidget(self.models_gui.window)
             main_widget.addWidget(self._library_gui.window)
