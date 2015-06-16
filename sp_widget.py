@@ -730,6 +730,7 @@ class _LibraryWindow(_BaseWindow):
 
 class _LibraryComboBox(QComboBox, _LibraryWindow):
     def __init__(self, model, models_gui, x, y):
+        QComboBox.__init__(self)
         _LibraryWindow.__init__(self, model, models_gui, x, y)
 
         self.addItem(AVAILABLE_COMPONENTS)
