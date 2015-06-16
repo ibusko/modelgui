@@ -26,8 +26,11 @@ manager.setArrays(x, y)
 widget = manager.buildMainPanel(model)
 
 (i) build an instance; (ii) add event handlers if needed;
-(iii) add data arrays if needed; (iv) get the widget, initialized
-with a non-empty list of astropy spectral model components.
+(iii) add data arrays if needed; (iv) get the widget, optionally
+initialized with a spectral model. This can be in the form of
+a non-empty list of astropy spectral model components, or a file
+name with the a compound model definition (as used by specfit), or
+a Python reference to an instance of a compound model.
 
 
 - modelmvc.py
@@ -51,11 +54,11 @@ Demo driver for the code in sp_model_manager.py. Run it to
 see the basic sp_widget in action (right-click on the tree
 elements brings up contextual menus):
 
-% python mm_widget_demo.py test1()
+% python mm_widget_demo.py "test3()"
 
 or
 
-% python mm_widget_demo.py test1() model_filename
+% python mm_widget_demo.py "test2()" model_filename
 
 where model_filename is the full path and name of a .py file
 that contains a model definition. You can get an example by

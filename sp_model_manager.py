@@ -1,7 +1,6 @@
 from __future__ import division
 
 import sys
-import warnings
 
 from pyqt_nonblock import pyqtapplication
 
@@ -12,8 +11,6 @@ from sp_widget import SpectralModelManager, SignalModelChanged
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from specview_signals import *
-from spectrum_data import SpectrumData
 
 # Derived app class that builds the QApplication and runs it as a modal dialog.
 
