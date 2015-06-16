@@ -443,8 +443,8 @@ class ModelManager(object):
         self.manager.setArrays(x, y)
 
     def spectrum(self, wave):
-        ''' Computes the compond model for a given
-        array of spectral coordinate values.
+        ''' Computes the compound model flux values,
+        given an array of spectral coordinate values.
 
         Parameters
         ----------
