@@ -1136,8 +1136,8 @@ class SpectralModelManager(QObject):
         return self.models_gui.model.items
 
     def spectrum(self, wave):
-        ''' Computes the compound model for a given
-        array of spectral coordinate values.
+        ''' Computes the compound model flux values,
+        given an array of spectral coordinate values.
 
         Parameters
         ----------
@@ -1150,9 +1150,17 @@ class SpectralModelManager(QObject):
         the model, a zero-valued array is returned instead.
 
         '''
+        # self._model can be either a list of components
+        # or a compound model instance. In the case of a
+        # list, we just add the components sequentially.
         if len(self.components) > 0:
-            compound_model = _buildSummedCompoundModel(self.components)
+            if not type(self._model) == type([]):
+                compound_model = self._model
+            else:
+                compound_model = _buildSummedCompoundModel(self.components)
+
             return compound_model(wave)
+
         else:
             return np.zeros(len(wave))
 
