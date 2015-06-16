@@ -489,10 +489,11 @@ class _SpectralModelsWindow(_BaseWindow):
         global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
 
-        f = os.open(fname, os.O_RDWR|os.O_CREAT)
-        os.write(f, prolog)
-        os.write(f, expression_string)
-        os.close(f)
+        if len(fname) > 0:
+            f = os.open(fname, os.O_RDWR|os.O_CREAT)
+            os.write(f, prolog)
+            os.write(f, expression_string)
+            os.close(f)
 
     def _assemble_component_spec(self, component):
         # Builds an operand for an astropy compound model.
@@ -720,7 +721,7 @@ class _LibraryWindow(_BaseWindow):
     def finalizeAddingComponent(self, name):
         # this should perhaps be done by instantiating from a
         # class. We instead resort to brute force and copy the
-        # instance instead. It works
+        # instance instead. It works.....
         if name in models_registry.registry:
             component = models_registry.registry[name].copy()
             if component:
@@ -980,12 +981,13 @@ class SpectralModelManager(QObject):
 
     Parameters
     ----------
-    model: list or string, optional
+    model: list or string or variable, optional
       List with instances of spectral components from
       astropy.modeling.functional_models. If not provided,
       the instance will be initialized with an empty list.
       Or it can be a string with a fully specified file name
-      which contains a compound model specification.
+      which contains a compound model specification. Or, it
+      can be a Python reference to a compound model instance.
 
     drop_down: boolean, optional
       Defines GUI looks. Default is True, meaning that the available
@@ -1002,9 +1004,11 @@ class SpectralModelManager(QObject):
             self._model = []
         elif type(model) == type(list):
             self._model = model
-        else:
+        elif type(model) == type(""):
             global _model_directory
             self._model, _model_directory = buildModelFromFile(model)
+        else:
+            self._model = model
 
         self._drop_down = drop_down
 
@@ -1050,10 +1054,12 @@ class SpectralModelManager(QObject):
 
         Parameters
         ----------
-        model: list, optional
+        model: list or str, optional
           List with instances of spectral components from
-          astropy.modeling.functional_models. If not provided,
-          the list of components will exist but will be empty.
+          astropy.modeling.functional_models. Or, a file name
+          in the 'specfit' format from where a compound model
+          can be imported. If not provided, the list of components
+          will exist but will be empty.
 
         Returns
         -------
@@ -1066,9 +1072,11 @@ class SpectralModelManager(QObject):
         if model != None:
             if type(model) == type([]):
                 self._model = model
-            else:
+            elif type(model) == type(""):
                 global _model_directory
                 self._model, _model_directory = buildModelFromFile(model)
+            else:
+                self._model = model
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
