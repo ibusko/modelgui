@@ -902,7 +902,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
         nameItem = SpectralComponentValueItem(element, "name")
         nameItem.setDataItem(element.name)
-        nameItem.setEditable(False)
+        # nameItem.setEditable(True)
         item.appendRow(nameItem)
 
         # now add parameters to component in tree.
@@ -953,6 +953,26 @@ class ActiveComponentsModel(SpectralComponentsModel):
         else:
             item.setData(type + ": " + str(getattr(item.parameter, type)), role=Qt.DisplayRole)
 
+    def _nameChanged(self, item):
+        old_name = item.item
+        new_name = str(item.text())
+        # remove actual new name from the "name:newname" in the tree display
+        index = new_name.find(":")
+        if index > -1:
+            new_name = new_name[index+2:]
+        if len(new_name) > 0:
+            setattr(item, "item", new_name)
+            if index <= -1:
+                item.setData("name: " + new_name, role=Qt.DisplayRole)
+            # function name is followed by component name when displaying on tree
+            item_parent = item.parent()
+            id_string = str(item_parent.text())
+            index = id_string.find("(")
+            function_name = id_string[:index-1]
+            item_parent.setData(function_name + " (" + new_name + ")", role=Qt.DisplayRole)
+        else:
+            item.setData("name: " + old_name, role=Qt.DisplayRole)
+
     def _booleanItemChecked(self, item):
         type = item.type
         if item.checkState() == Qt.Checked:
@@ -963,7 +983,9 @@ class ActiveComponentsModel(SpectralComponentsModel):
     def _onItemChanged(self, item):
         if item.isCheckable():
             self._booleanItemChecked(item)
-        else:
+        elif item.type == "name":
+            self._nameChanged(item)
+        elif item.type in ("value", "min", "max"):
             self._floatItemChanged(item)
 
 
