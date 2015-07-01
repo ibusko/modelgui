@@ -966,6 +966,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 item.setData("name: " + new_name, role=Qt.DisplayRole)
             # function name is followed by component name when displaying on tree
             item_parent = item.parent()
+            setattr(item_parent.item, "_name", new_name)
             id_string = str(item_parent.text())
             index = id_string.find("(")
             function_name = id_string[:index-1]
