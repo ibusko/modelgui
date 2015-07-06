@@ -29,6 +29,8 @@ def buildModelFromFile(fname):
     directory = os.path.dirname(str(fname))
     sys.path.append(directory)
 
+    print("@@@@@@  file sp_widget.py; line 32 - "), sys.path
+
     f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
     import_statement = "import " + f + " as module"
 
@@ -971,6 +973,10 @@ class ActiveComponentsModel(SpectralComponentsModel):
             index = id_string.find("(")
             function_name = id_string[:index-1]
             item_parent.setData(function_name + " (" + new_name + ")", role=Qt.DisplayRole)
+
+            # name was successfully changed; now check to see if any tied parameters depend om it.
+            self._check_tied_components(old_name)
+
         else:
             item.setData("name: " + old_name, role=Qt.DisplayRole)
 
@@ -988,6 +994,13 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self._nameChanged(item)
         elif item.type in ("value", "min", "max"):
             self._floatItemChanged(item)
+
+    # scans all parameters in all components in the model, looking for
+    # tied parameters that point to the old name. Replace the old name
+    # with the new name in the tie. This assumes that we use the standard
+    # lambda form for ties.
+    def _check_tied_components(self, name):
+        print("@@@@@@  file sp_widget.py; line 1001 - "), name
 
 
 class SpectralModelManager(QObject):
