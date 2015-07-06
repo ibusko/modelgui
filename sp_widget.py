@@ -1006,13 +1006,12 @@ class ActiveComponentsModel(SpectralComponentsModel):
                         tie_text = get_tie_text(value)
                         if old_name in tie_text:
                             new_tie_text = tie_text.replace(old_name, new_name)
-                            # new_tie = compile(new_tie_text, "", "single")
                             new_tie = eval(new_tie_text)
                             item.tied[key] = new_tie
                             modified = True
 
         if modified:
-            pass # here we should kick a tree refresh
+            pass # TODO here we should kick a tree refresh
 
 
 class SpectralModelManager(QObject):
