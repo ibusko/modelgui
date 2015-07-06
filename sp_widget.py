@@ -29,8 +29,6 @@ def buildModelFromFile(fname):
     directory = os.path.dirname(str(fname))
     sys.path.append(directory)
 
-    print("@@@@@@  file sp_widget.py; line 32 - "), sys.path
-
     f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
     import_statement = "import " + f + " as module"
 
@@ -975,7 +973,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
             item_parent.setData(function_name + " (" + new_name + ")", role=Qt.DisplayRole)
 
             # name was successfully changed; now check to see if any tied parameters depend om it.
-            self._check_tied_components(old_name)
+            self._modify_tied_components(old_name, new_name)
 
         else:
             item.setData("name: " + old_name, role=Qt.DisplayRole)
@@ -999,8 +997,22 @@ class ActiveComponentsModel(SpectralComponentsModel):
     # tied parameters that point to the old name. Replace the old name
     # with the new name in the tie. This assumes that we use the standard
     # lambda form for ties.
-    def _check_tied_components(self, name):
-        print("@@@@@@  file sp_widget.py; line 1001 - "), name
+    def _modify_tied_components(self, old_name, new_name):
+        modified = False
+        for item in self.items:
+            if item.tied:
+                for key, value in item.tied.items():
+                    if value:
+                        tie_text = get_tie_text(value)
+                        if old_name in tie_text:
+                            new_tie_text = tie_text.replace(old_name, new_name)
+                            # new_tie = compile(new_tie_text, "", "single")
+                            new_tie = eval(new_tie_text)
+                            item.tied[key] = new_tie
+                            modified = True
+
+        if modified:
+            pass # here we should kick a tree refresh
 
 
 class SpectralModelManager(QObject):
