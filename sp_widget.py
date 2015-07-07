@@ -973,7 +973,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
             item_parent.setData(function_name + " (" + new_name + ")", role=Qt.DisplayRole)
 
             # name was successfully changed; now check to see if any tied parameters depend om it.
-            self._modify_tied_components(old_name, new_name)
+            self._modify_tied_components(item, old_name, new_name)
 
         else:
             item.setData("name: " + old_name, role=Qt.DisplayRole)
@@ -997,7 +997,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
     # tied parameters that point to the old name. Replace the old name
     # with the new name in the tie. This assumes that we use the standard
     # lambda form for ties.
-    def _modify_tied_components(self, old_name, new_name):
+    def _modify_tied_components(self, reference_item, old_name, new_name):
         modified = False
         for item in self.items:
             if item.tied:
@@ -1012,6 +1012,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
         if modified:
             pass # TODO here we should kick a tree refresh
+            self.itemChanged.emit(reference_item)
 
 
 class SpectralModelManager(QObject):
