@@ -998,21 +998,25 @@ class ActiveComponentsModel(SpectralComponentsModel):
     # with the new name in the tie. This assumes that we use the standard
     # lambda form for ties.
     def _modify_tied_components(self, reference_item, old_name, new_name):
-        modified = False
-        for item in self.items:
-            if item.tied:
-                for key, value in item.tied.items():
-                    if value:
-                        tie_text = get_tie_text(value)
+        for row, component in enumerate(self.items):
+            if component.tied:
+                row2 = 1
+                for key, tie in component.tied.items():
+                    row2 += 1
+                    if tie:
+                        tie_text = get_tie_text(tie)
                         if old_name in tie_text:
+
+                            # modify actual component
                             new_tie_text = tie_text.replace(old_name, new_name)
                             new_tie = eval(new_tie_text)
-                            item.tied[key] = new_tie
-                            modified = True
+                            component.tied[key] = new_tie
 
-        if modified:
-            pass # TODO here we should kick a tree refresh
-            self.itemChanged.emit(reference_item)
+                            # modify element in tree
+                            tie_element = self.item(row).child(row2).child(4)
+                            text = tie_element.text()
+                            new_text = text.replace(old_name, new_name)
+                            tie_element.setData(new_text, role=Qt.DisplayRole)
 
 
 class SpectralModelManager(QObject):
