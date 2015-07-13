@@ -1013,10 +1013,13 @@ class ActiveComponentsModel(SpectralComponentsModel):
                             component.tied[key] = new_tie
 
                             # modify element in tree
-                            tie_element = self.item(row).child(row2).child(4)
-                            text = tie_element.text()
-                            new_text = text.replace(old_name, new_name)
-                            tie_element.setData(new_text, role=Qt.DisplayRole)
+                            item = self.item(row)
+                            # sometimes the tree returns a None item.
+                            if item:
+                                tie_element = item.child(row2).child(4)
+                                text = tie_element.text()
+                                new_text = text.replace(old_name, new_name)
+                                tie_element.setData(new_text, role=Qt.DisplayRole)
 
 
 class SpectralModelManager(QObject):
