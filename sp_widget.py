@@ -979,11 +979,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
             item.setData("name: " + old_name, role=Qt.DisplayRole)
 
     def _booleanItemChecked(self, item):
-        type = item.type
-        if item.checkState() == Qt.Checked:
-            setattr(item.parameter, type, True)
-        else:
-            setattr(item.parameter, type, False)
+        setattr(item.parameter, item.type, (item.checkState() == Qt.Checked))
 
     def _onItemChanged(self, item):
         if item.isCheckable():
