@@ -971,15 +971,15 @@ class ActiveComponentsModel(SpectralComponentsModel):
             index = id_string.find("(")
             function_name = id_string[:index-1]
             item_parent.setData(function_name + " (" + new_name + ")", role=Qt.DisplayRole)
+
+            # name was successfully changed; now check to see if any tied parameters depend om it.
+            self._modify_tied_components(item, old_name, new_name)
+
         else:
             item.setData("name: " + old_name, role=Qt.DisplayRole)
 
     def _booleanItemChecked(self, item):
-        type = item.type
-        if item.checkState() == Qt.Checked:
-            setattr(item.parameter, type, True)
-        else:
-            setattr(item.parameter, type, False)
+        setattr(item.parameter, item.type, (item.checkState() == Qt.Checked))
 
     def _onItemChanged(self, item):
         if item.isCheckable():
@@ -988,6 +988,34 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self._nameChanged(item)
         elif item.type in ("value", "min", "max"):
             self._floatItemChanged(item)
+
+    # scans all parameters in all components in the model, looking for
+    # tied parameters that point to the old name. Replace the old name
+    # with the new name in the tie. This assumes that we use the standard
+    # lambda form for ties.
+    def _modify_tied_components(self, reference_item, old_name, new_name):
+        for row, component in enumerate(self.items):
+            if component.tied:
+                row2 = 1
+                for key, tie in component.tied.items():
+                    row2 += 1
+                    if tie:
+                        tie_text = get_tie_text(tie)
+                        if old_name in tie_text:
+
+                            # modify actual component
+                            new_tie_text = tie_text.replace(old_name, new_name)
+                            new_tie = eval(new_tie_text)
+                            component.tied[key] = new_tie
+
+                            # modify element in tree
+                            item = self.item(row)
+                            # sometimes the tree returns a None item.
+                            if item:
+                                tie_element = item.child(row2).child(4)
+                                text = tie_element.text()
+                                new_text = text.replace(old_name, new_name)
+                                tie_element.setData(new_text, role=Qt.DisplayRole)
 
 
 class SpectralModelManager(QObject):
