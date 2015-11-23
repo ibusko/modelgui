@@ -1,3 +1,15 @@
+The purppse of this package is to provide tools that enable
+GUI access to astropy's spectral model objects.
+
+Astropy compoud spectral models are displayed as a tree object
+on screen, where each component can be opened in turn to display
+its internal attributes. Multiple compound models can be handled
+at once, each being accessed via a separate tab in a tabbed pane.
+
+The GUI can be run directly from a commnand line environment.
+
+
+
 Source files:
 -------------
 
