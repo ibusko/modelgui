@@ -30,7 +30,7 @@ def buildModelFromFile(fname):
                     return compound_model, directory
         return None,None
     except Exception as e:
-        print("ERROR: " + e)
+        print("ERROR: " + str(e))
         return None,None
 
 
