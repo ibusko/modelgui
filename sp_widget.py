@@ -387,8 +387,11 @@ class _SpectralModelsWindow(_BaseWindow):
         compound_model, _model_directory = buildModelFromFile(fname)
 
         if compound_model:
-            for i, model in enumerate(compound_model._submodels):
-                self.model.addOneElement(model)
+            if hasattr(compound_model, "_submodels"):
+                for i, model in enumerate(compound_model._submodels):
+                    self.model.addOneElement(model)
+            else:
+                self.model.addOneElement(compound_model)
 
             self._update_compound_model(compound_model)
 
@@ -405,8 +408,11 @@ class _SpectralModelsWindow(_BaseWindow):
         if self.model.compound_model:
             compound_model = self.model.compound_model + compound_model
         self.model.compound_model = compound_model
-        self.expression_field.setText(self.model.compound_model._format_expression())
-
+        if hasattr(self.model.compound_model, "_format_expression"):
+            expression = self.model.compound_model._format_expression()
+        else:
+            expression = ""
+        self.expression_field.setText(expression)
 
 
 # Parameter values can be edited directly from their QStandardItem
@@ -824,6 +830,8 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self._nameChanged(item)
         elif item.type in ("value", "min", "max"):
             self._floatItemChanged(item)
+
+        pass
 
     # scans all parameters in all components in the model, looking for
     # tied parameters that point to the old name. Replace the old name
