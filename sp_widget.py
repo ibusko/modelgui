@@ -146,7 +146,7 @@ class _MyQTreeView(QTreeView):
         self.b_up.setEnabled(False)
         self.b_down.setEnabled(False)
         self.b_delete.setEnabled(False)
-        self.b_save.setEnabled(model and len(model.items) > 1)
+        self.b_save.setEnabled(model and len(model.items) > 0)
 
     # Overrides QTreeView to provide
     # sensitivity to selection events.
@@ -378,7 +378,7 @@ class _SpectralModelsWindow(_BaseWindow):
     # itself is mostly useful for saving complex compound models. It
     # remains to be seen if this assumption will hold under user scrutiny.
     def _setSaveButtonLooks(self):
-        self.save_button.setEnabled(len(self.model.items) > 1)
+        self.save_button.setEnabled(len(self.model.items) > 0)
 
     # contextual menu
     def openMenu(self, position):
@@ -444,15 +444,38 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-        # Build model expression inside a string, and dumps
-        # string to file.
+        # Build model expression inside a string, and dump string to file.
+        model = self.model.compound_model
+        if hasattr(model, '_format_expression'):
+            expression_string, prolog = self._buildCompoundModelExpression(model)
+        else:
+            expression_string, prolog = self._buildSingleComponentExpression(model)
 
+        # Write to file.
+        global _model_directory # retains memory of last visited directory
+        fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
+
+        if len(fname) > 0:
+            f = os.open(fname, os.O_RDWR|os.O_CREAT)
+            os.write(f, prolog)
+            os.write(f, expression_string)
+            os.close(f)
+
+    def _buildSingleComponentExpression(self, model):
+        name = models_registry.get_component_name(model)
+        path = models_registry.get_component_path(model)
+
+        prolog = "from " + path + " import " + name + "\n\n"
+        expression_string = "model1 = \\\n" + self._assemble_component_spec(model)
+
+        return expression_string, prolog
+
+    def _buildCompoundModelExpression(self, model):
         # The following assumes that the formatted string expression
         # in an astropy compound model has operands of the form [0], [1],
         # etc, that is, a sequential number enclosed in square brackets.
-        expression = self.model.compound_model._format_expression()
+        expression = model._format_expression()
         tokens = re.split(r'[0-9]+', expression)
-
         # this loop builds the main expression, and captures
         # information needed for building the file header (where
         # the import statements go).
@@ -460,8 +483,8 @@ class _SpectralModelsWindow(_BaseWindow):
         import_module_names = {}
         for token, component in zip(tokens, self.model.items):
             # clean up astropy-inserted characters
-            token = token.replace('[','')
-            token = token.replace(']','')
+            token = token.replace('[', '')
+            token = token.replace(']', '')
 
             expression_string += str(token) + self._assemble_component_spec(component)
 
@@ -484,16 +507,7 @@ class _SpectralModelsWindow(_BaseWindow):
         # stored in the file. It remains to be seen how useful this
         # assumption will be in practice.
         prolog += "model1 = \\\n"
-
-        # Write to file.
-        global _model_directory # retains memory of last visited directory
-        fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
-
-        if len(fname) > 0:
-            f = os.open(fname, os.O_RDWR|os.O_CREAT)
-            os.write(f, prolog)
-            os.write(f, expression_string)
-            os.close(f)
+        return expression_string, prolog
 
     def _assemble_component_spec(self, component):
         # Builds an operand for an astropy compound model.
@@ -549,27 +563,20 @@ class _SpectralModelsWindow(_BaseWindow):
         global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getOpenFileName(self, 'Open file', _model_directory)
         compound_model, _model_directory = buildModelFromFile(fname)
-
+        expression = ""
         if compound_model:
-            for i, model in enumerate(compound_model._submodels):
-                self.model.addOneElement(model)
+            if hasattr(compound_model, '_submodels'):
+                for i, model in enumerate(compound_model._submodels):
+                    self.model.addOneElement(model)
+            else:
+                self.model.addOneElement(compound_model)
 
-            self._update_compound_model(compound_model)
+            if hasattr(compound_model, '_format_expression'):
+                expression = compound_model._format_expression()
 
             self.emit(SIGNAL("treeChanged"), 0)
 
-    def _update_compound_model(self, compound_model):
-        # if a compound model already exists, add the new compound
-        # model to it in a simple additive fashion. That is, using
-        # the language of the model expression, the new model is
-        # appended at the end of the existing model, with a '+'
-        # operator in between. It remains to be seen if this is
-        # the actual desired behavior, or something more flexible
-        # should be provided.
-        if self.model.compound_model:
-            compound_model = self.model.compound_model + compound_model
-        self.model.compound_model = compound_model
-        self.expression_field.setText(self.model.compound_model._format_expression())
+        self.expression_field.setText(expression)
 
 
 
@@ -932,6 +939,11 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 tiedItem = SpectralComponentTiedItem(par)
                 tiedItem.setDataItem(par.tied)
                 parItem.appendRow(tiedItem)
+
+        # This is resetting the compound model to an all-summed model.
+        # We still have to figure out how to preserve the existing compound
+        # model expression.
+        self.compound_model = _buildSummedCompoundModel(self.items)
 
     @property
     def items(self):
