@@ -1,10 +1,8 @@
 from __future__ import division
 
-import os, sys
+import os
 import math
 import re
-import dis
-from cStringIO import StringIO
 
 import numpy as np
 from astropy.modeling import Parameter, Fittable1DModel
@@ -13,6 +11,7 @@ from astropy.modeling.polynomial import PolynomialModel
 import signal_slot
 import models_registry
 import sp_adjust
+from sp_model_io import buildModelFromFile, saveModelToFile, get_tie_text, assemble_component_spec
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -22,33 +21,6 @@ FONT_SIZE_INCREASE = 2
 
 # To memorize last visited directory.
 _model_directory = os.environ["HOME"]
-
-
-# Builds a compound model specified in a .py file.
-def buildModelFromFile(fname):
-    directory = os.path.dirname(str(fname))
-    sys.path.append(directory)
-
-    f = os.path.basename(str(fname)).split('.')[0] # remove .py from end of file name so it can be imported
-    import_statement = "import " + f + " as module"
-
-    try:
-        exec import_statement in locals(), locals()
-
-        # this will pick up the first model defined in the file. A different
-        # mechanism is needed to handle files with multiple model definitions.
-        for variable in dir(module):
-            if not variable.startswith('__'):
-                # this assumes that the module contains only model definitions and
-                # imports for the functional types used in the model definitions.
-                # This 'if' statement skips the function types, everything that
-                # passes is assumed to be a valid compound model definition.
-                if (str(type(module.__dict__[variable]))).find('astropy.modeling.core._ModelMeta') < 0:
-                    compound_model = module.__dict__[variable]
-                    return compound_model, directory
-        return None,None
-    except:
-        return None,None
 
 
 # Builds a compound model by adding together all components in
@@ -81,44 +53,6 @@ def findLevelAndIndex(indices):
             level += 1
     return level, index0
 
-
-# Disassembles a tie callable. Ties read from a model
-# file are not directly accessible in text form because
-# the model file is compiled at import time.
-def get_tie_text(tie):
-    if tie:
-        # dis() only outputs on standard output.....
-        backup = sys.stdout
-        sys.stdout = StringIO()
-        dis.dis(tie)
-        assembler_text = sys.stdout.getvalue()
-        sys.stdout.close()
-        sys.stdout = backup
-        result = _parse_assembler_text(assembler_text)
-    else:
-        result = 'False'
-    return result
-
-
-# This parses the text returned by the disassembler for
-# a lambda function that multiplies a constant by a
-# variable. That is, we are assuming that ties are coded
-# as lambda functions with multiplication by a constant,
-# as in STSDAS' specfit.
-parser = re.compile(r'\(([^)]+)\)') # picks up whatever is enclosed in parenthesis
-def _parse_assembler_text(text):
-    tokens = parser.findall(text)
-    factor = tokens[0]
-    lambda_variable_name = tokens[1]
-    function_id = tokens[2]
-    par_name = tokens[3]
-
-    return "lambda %s: %s *  %s[%s].%s" % \
-           (lambda_variable_name,
-            factor,
-            lambda_variable_name,
-            function_id,
-            par_name)
 
 
 # Subclasses QTreeView in order to detect selections on tree elements
@@ -378,7 +312,7 @@ class _SpectralModelsWindow(_BaseWindow):
     # itself is mostly useful for saving complex compound models. It
     # remains to be seen if this assumption will hold under user scrutiny.
     def _setSaveButtonLooks(self):
-        self.save_button.setEnabled(len(self.model.items) > 0)
+        self.save_button.setEnabled(len(self.model.items) > 1)
 
     # contextual menu
     def openMenu(self, position):
