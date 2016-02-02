@@ -6,12 +6,11 @@ import re
 
 import numpy as np
 from astropy.modeling import Parameter, Fittable1DModel
-from astropy.modeling.polynomial import PolynomialModel
 
 import signal_slot
 import models_registry
 import sp_adjust
-from sp_model_io import buildModelFromFile, saveModelToFile, get_tie_text, assemble_component_spec
+from sp_model_io import buildModelFromFile, get_tie_text
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -312,7 +311,7 @@ class _SpectralModelsWindow(_BaseWindow):
     # itself is mostly useful for saving complex compound models. It
     # remains to be seen if this assumption will hold under user scrutiny.
     def _setSaveButtonLooks(self):
-        self.save_button.setEnabled(len(self.model.items) > 1)
+        self.save_button.setEnabled(len(self.model.items) > 0)
 
     # contextual menu
     def openMenu(self, position):
