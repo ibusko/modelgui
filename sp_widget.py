@@ -291,11 +291,13 @@ class _SpectralModelsWindow(_BaseWindow):
         # we keep a compound model instance in parallel with its list
         # representation. The main purpose of this is to keep the
         # compound model expression at hand at all times.
-        compound_model = model.compound_model
-        expression = ""
-        if compound_model:
-            expression = compound_model._format_expression()
-        self.expression_field.setText(expression)
+        if hasattr(model, 'compound_model'):
+            compound_model = model.compound_model
+            expression = ""
+            if compound_model:
+                expression = compound_model._format_expression()
+            self.expression_field.setText(expression)
+
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button, self.save_button, model)
@@ -806,6 +808,14 @@ def _float_check(value):
 # editable attributes.
 
 class ActiveComponentsModel(SpectralComponentsModel):
+
+
+
+#TODO  'components' should be an instance of compund model. No list allowed.
+#TODO  creation of the compound model should be dealt with by the caller.
+
+
+
     def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
 
@@ -816,12 +826,18 @@ class ActiveComponentsModel(SpectralComponentsModel):
         # rules for combining the components are already built-in in the
         # instance. For a plain list, we adopt for now a simple sum of
         # components.
-        if type(components) == type([]):
-            self.compound_model = _buildSummedCompoundModel(components)
-        else:
-            self.compound_model = components
 
-        self.addItems(self.compound_model)
+
+#TODO  thus this won't be necessary anymore.
+
+
+        if components and (len(components) > 0):
+            if type(components) == type([]):
+                self.compound_model = _buildSummedCompoundModel(components)
+            else:
+                self.compound_model = components
+
+            self.addItems(self.compound_model)
 
     # TODO use QDataWidgetMapper
     # this violation of MVC design principles is necessary
@@ -996,6 +1012,11 @@ class SpectralModelManager(QObject):
     """
     def __init__(self, model=None, drop_down=True):
         super(SpectralModelManager, self).__init__()
+
+#TODO  single point of entry: should create the compound model here once and for all.
+#TODO  the code downstream will derive its tree representation from this compound model.
+#TODO  this should work automatically for everything but for one situation: adding a component to an already existing comppound model.
+
 
         if model == None:
             self._compound_model = []
