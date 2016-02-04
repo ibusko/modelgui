@@ -808,11 +808,8 @@ def _float_check(value):
 class ActiveComponentsModel(SpectralComponentsModel):
     def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
-        self.addItems(components)
 
         self.itemChanged.connect(self._onItemChanged)
-
-        #TODO  must keep compound model instance here
 
         # 'components' can be either a list of function components, or
         # an already built instance of CompoundModel. In this case, the
@@ -823,6 +820,8 @@ class ActiveComponentsModel(SpectralComponentsModel):
             self.compound_model = _buildSummedCompoundModel(components)
         else:
             self.compound_model = components
+
+        self.addItems(self.compound_model)
 
     # TODO use QDataWidgetMapper
     # this violation of MVC design principles is necessary
