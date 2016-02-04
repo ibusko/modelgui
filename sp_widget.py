@@ -812,6 +812,8 @@ class ActiveComponentsModel(SpectralComponentsModel):
 
         self.itemChanged.connect(self._onItemChanged)
 
+        #TODO  must keep compound model instance here
+
         # 'components' can be either a list of function components, or
         # an already built instance of CompoundModel. In this case, the
         # rules for combining the components are already built-in in the
@@ -997,14 +999,14 @@ class SpectralModelManager(QObject):
         super(SpectralModelManager, self).__init__()
 
         if model == None:
-            self._model = []
+            self._compound_model = []
         elif type(model) == type(list):
-            self._model = model
+            self._compound_model = model
         elif type(model) == type(""):
             global _model_directory
-            self._model, _model_directory = buildModelFromFile(model)
+            self._compound_model, _model_directory = buildModelFromFile(model)
         else:
-            self._model = model
+            self._compound_model = model
 
         self._drop_down = drop_down
 
@@ -1064,21 +1066,21 @@ class SpectralModelManager(QObject):
         """
         # override whatever model was passed to the constructor.
         # This specific form of the conditional avoids a mishap
-        # when self._model is an empty list.
+        # when self._compound_model is an empty list.
         if model != None:
             if type(model) == type([]):
-                self._model = model
+                self._compound_model = model
             elif type(model) == type(""):
                 global _model_directory
-                self._model, _model_directory = buildModelFromFile(model)
+                self._compound_model, _model_directory = buildModelFromFile(model)
             else:
-                self._model = model
+                self._compound_model = model
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
-            self.models_gui = _SpectralModelsGUI(self._model)
+            self.models_gui = _SpectralModelsGUI(self._compound_model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y, drop_down=self._drop_down)
 
         if self._drop_down:
@@ -1146,12 +1148,12 @@ class SpectralModelManager(QObject):
         the model, a zero-valued array is returned instead.
 
         '''
-        # self._model can be either a list of components
+        # self._compound_model can be either a list of components
         # or a compound model instance. In the case of a
         # list, we just add the components sequentially.
         if len(self.components) > 0:
-            if not type(self._model) == type([]):
-                compound_model = self._model
+            if not type(self._compound_model) == type([]):
+                compound_model = self._compound_model
             else:
                 compound_model = _buildSummedCompoundModel(self.components)
 
