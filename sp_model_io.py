@@ -40,24 +40,48 @@ def buildModelFromFile(fname):
 
 # Builds a model expression inside a string, and dumps string to file.
 def saveModelToFile(parent, model, model_directory):
+    if hasattr(model, '_format_expression'):
+        expression_string, prolog = _buildCompoundModelExpression(model)
+    else:
+        expression_string, prolog = _buildSingleComponentExpression(model)
 
+    # Write to file.
+    fname = QFileDialog.getSaveFileName(parent, 'Write to file', model_directory)
+
+    if len(fname) > 0:
+        f = os.open(fname, os.O_RDWR|os.O_CREAT)
+        os.write(f, prolog)
+        os.write(f, expression_string)
+        os.close(f)
+
+
+def _buildSingleComponentExpression(model):
+    name = models_registry.get_component_name(model)
+    path = models_registry.get_component_path(model)
+
+    prolog = "from " + path + " import " + name + "\n\n"
+    expression_string = "model1 = \\\n" + _assemble_component_spec(model)
+
+    return expression_string, prolog
+
+
+def _buildCompoundModelExpression(model):
     # The following assumes that the formatted string expression
     # in an astropy compound model has operands of the form [0], [1],
     # etc, that is, a sequential number enclosed in square brackets.
-    expression = model.compound_model._format_expression()
+    expression = model._format_expression()
     tokens = re.split(r'[0-9]+', expression)
-
     # this loop builds the main expression, and captures
     # information needed for building the file header (where
     # the import statements go).
     expression_string = ""
     import_module_names = {}
-    for token, component in zip(tokens, model.items):
+    for token, component in zip(tokens, model):
         # clean up astropy-inserted characters
-        token = token.replace('[','')
-        token = token.replace(']','')
+        token = token.replace('[', '')
+        token = token.replace(']', '')
 
-        expression_string += str(token) + assemble_component_spec(component)
+        expression_string += str(token) + _assemble_component_spec(component)
 
         # here we store the module paths for each component. Using
         # a dictionary key ensures that we get only one of each.
@@ -78,15 +102,7 @@ def saveModelToFile(parent, model, model_directory):
     # stored in the file. It remains to be seen how useful this
     # assumption will be in practice.
     prolog += "model1 = \\\n"
-
-    # Write to file.
-    fname = QFileDialog.getSaveFileName(parent, 'Write to file', model_directory)
-
-    if len(fname) > 0:
-        f = os.open(fname, os.O_RDWR|os.O_CREAT)
-        os.write(f, prolog)
-        os.write(f, expression_string)
-        os.close(f)
+    return expression_string, prolog
 
 
 # Disassembles a tie callable. Ties read from a model
@@ -129,7 +145,7 @@ def _parse_assembler_text(text):
 
 
 # Builds an operand (a spectral component) for an astropy compound model.
-def assemble_component_spec(component):
+def _assemble_component_spec(component):
     result = ""
 
     # function name - Note that get_component_name works
