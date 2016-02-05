@@ -82,10 +82,10 @@ def test3():
 def test4():
     # import n5548_models
     # compound_model = n5548_models.model1
-    # import atest1
-    # compound_model = atest1.model1
-    import test2
-    compound_model = test2.model1
+    import atest1
+    compound_model = atest1.model1
+    # import test2
+    # compound_model = test2.model1
 
     manager = SpectralModelManagerApp(compound_model)
 

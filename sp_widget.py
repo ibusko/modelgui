@@ -500,7 +500,7 @@ class _SpectralModelsWindow(_BaseWindow):
         expression = ""
         if compound_model:
             if hasattr(compound_model, '_submodels'):
-                for i, model in enumerate(compound_model._submodels):
+                for model in compound_model:
                     self.model.addOneElement(model)
             else:
                 self.model.addOneElement(compound_model)
@@ -811,35 +811,13 @@ def _float_check(value):
 
 class ActiveComponentsModel(SpectralComponentsModel):
 
-
-
-#TODO  'components' should be an instance of compund model. No list allowed.
-#TODO  creation of the compound model should be dealt with by the caller.
-
-
-
     def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
 
+        self.compound_model = components
+        self.addItems(self.compound_model)
+
         self.itemChanged.connect(self._onItemChanged)
-
-        # 'components' can be either a list of function components, or
-        # an already built instance of CompoundModel. In this case, the
-        # rules for combining the components are already built-in in the
-        # instance. For a plain list, we adopt for now a simple sum of
-        # components.
-
-
-#TODO  thus this won't be necessary anymore.
-
-
-        if components and (len(components) > 0):
-            if type(components) == type([]):
-                self.compound_model = _buildSummedCompoundModel(components)
-            else:
-                self.compound_model = components
-
-            self.addItems(self.compound_model)
 
     # TODO use QDataWidgetMapper
     # this violation of MVC design principles is necessary
@@ -1010,15 +988,10 @@ class SpectralModelManager(QObject):
     def __init__(self, model=None, drop_down=True):
         super(SpectralModelManager, self).__init__()
 
-#TODO  single point of entry: should create the compound model here once and for all.
-#TODO  the code downstream will derive its tree representation from this compound model.
-#TODO  this should work automatically for everything but for one situation: adding a component to an already existing comppound model.
-
-
         if model == None:
-            self._compound_model = []
+            self._compound_model = None
         elif type(model) == type(list):
-            self._compound_model = model
+            self._compound_model = _buildSummedCompoundModel(model)
         elif type(model) == type(""):
             global _model_directory
             self._compound_model, _model_directory = buildModelFromFile(model)
@@ -1086,7 +1059,7 @@ class SpectralModelManager(QObject):
         # when self._compound_model is an empty list.
         if model != None:
             if type(model) == type([]):
-                self._compound_model = model
+                self._compound_model = _buildSummedCompoundModel(model)
             elif type(model) == type(""):
                 global _model_directory
                 self._compound_model, _model_directory = buildModelFromFile(model)
