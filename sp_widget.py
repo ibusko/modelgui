@@ -10,7 +10,7 @@ from astropy.modeling import Parameter, Fittable1DModel
 import signal_slot
 import models_registry
 import sp_adjust
-from sp_model_io import buildModelFromFile, get_tie_text
+import sp_model_io
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -378,125 +378,13 @@ class _SpectralModelsWindow(_BaseWindow):
             self.emit(SIGNAL("treeChanged"), index.row())
 
     def saveModel(self):
-        # Build model expression inside a string, and dump string to file.
-        model = self.model.compound_model
-        if hasattr(model, '_format_expression'):
-            expression_string, prolog = self._buildCompoundModelExpression(model)
-        else:
-            expression_string, prolog = self._buildSingleComponentExpression(model)
-
-        # Write to file.
         global _model_directory # retains memory of last visited directory
-        fname = QFileDialog.getSaveFileName(self, 'Write to file', _model_directory)
-
-        if len(fname) > 0:
-            f = os.open(fname, os.O_RDWR|os.O_CREAT)
-            os.write(f, prolog)
-            os.write(f, expression_string)
-            os.close(f)
-
-    def _buildSingleComponentExpression(self, model):
-        name = models_registry.get_component_name(model)
-        path = models_registry.get_component_path(model)
-
-        prolog = "from " + path + " import " + name + "\n\n"
-        expression_string = "model1 = \\\n" + self._assemble_component_spec(model)
-
-        return expression_string, prolog
-
-    def _buildCompoundModelExpression(self, model):
-        # The following assumes that the formatted string expression
-        # in an astropy compound model has operands of the form [0], [1],
-        # etc, that is, a sequential number enclosed in square brackets.
-        expression = model._format_expression()
-        tokens = re.split(r'[0-9]+', expression)
-        # this loop builds the main expression, and captures
-        # information needed for building the file header (where
-        # the import statements go).
-        expression_string = ""
-        import_module_names = {}
-        for token, component in zip(tokens, self.model.items):
-            # clean up astropy-inserted characters
-            token = token.replace('[', '')
-            token = token.replace(']', '')
-
-            expression_string += str(token) + self._assemble_component_spec(component)
-
-            # here we store the module paths for each component. Using
-            # a dictionary key ensures that we get only one of each.
-            path = models_registry.get_component_path(component)
-            name = models_registry.get_component_name(component)
-            import_module_names[name] = path
-
-        # this loop now uses the captured information from above to
-        # build a set of import statements that go at the beginning
-        # of the file.
-        prolog = ""
-        for name, path in import_module_names.iteritems():
-            prolog += "from " + path + " import " + name + "\n"
-        prolog += "\n"
-        # we need to add a reference to the model so it can actually
-        # be used after imported. We just use 'model1' for the variable
-        # name. This also implicitly assumes that only one model will be
-        # stored in the file. It remains to be seen how useful this
-        # assumption will be in practice.
-        prolog += "model1 = \\\n"
-        return expression_string, prolog
-
-    def _assemble_component_spec(self, component):
-        # Builds an operand for an astropy compound model.
-        result = ""
-
-        # function name - Note that get_component_name works
-        # pretty much independently of the models registry.
-        # Any model will work because the function name is
-        # derived from the component's __class__.
-        name = models_registry.get_component_name(component)
-        result += name
-
-        # component name
-        if component.name:
-            result += "(name = \'"
-            result += component.name + "\',\n"
-        else:
-            result += "(\n"
-
-        # parameter names and values
-        for i, param_name in enumerate(component.param_names):
-            result += "            " + param_name
-            result += " = "
-            result += str(component.parameters[i]) + ",\n"
-
-        # parameter bounds
-        bounds = component.bounds
-        result += "            bounds = {\n"
-        for param_name in component.param_names:
-            result += "                     '" + param_name + "': " + str(bounds[param_name]) + ",\n"
-        result += "                     },\n"
-
-        # parameter fixed flags
-        fixed = component.fixed
-        result += "            fixed = {\n"
-        for param_name in component.param_names:
-            result += "                     '" + param_name + "': " + str(fixed[param_name]) + ",\n"
-        result += "                    },\n"
-
-        # parameter ties. Ties have to be disassembled and parsed
-        # in order to become human-readable and writable to file.
-        ties = component.tied
-        result += "            tied = {\n"
-        for param_name in component.param_names:
-            tie_text = get_tie_text(ties[param_name])
-            result += "                    '" + param_name + "': " + tie_text + ",\n"
-        result += "                   },\n"
-
-        result += "            ) \\\n"
-        return result
+        sp_model_io.saveModelToFile(self, self.model.compound_model, _model_directory)
 
     def readModel(self):
         global _model_directory # retains memory of last visited directory
         fname = QFileDialog.getOpenFileName(self, 'Open file', _model_directory)
-        compound_model, _model_directory = buildModelFromFile(fname)
+        compound_model, _model_directory = sp_model_io.buildModelFromFile(fname)
         expression = ""
         if compound_model:
             if hasattr(compound_model, '_submodels'):
@@ -753,7 +641,7 @@ class SpectralComponentTiedItem(SpectralComponentItem):
         self.type = "tied"
 
         tie = getattr(self.parameter, self.type)
-        id_str = self.type + ": " + get_tie_text(tie)
+        id_str = self.type + ": " + sp_model_io.get_tie_text(tie)
 
         SpectralComponentItem.__init__(self, id_str)
         self.setEditable(False)  # for now!!
@@ -937,7 +825,7 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 for key, tie in component.tied.items():
                     row2 += 1
                     if tie:
-                        tie_text = get_tie_text(tie)
+                        tie_text = sp_model_io.get_tie_text(tie)
                         if old_name in tie_text:
 
                             # modify actual component
@@ -994,7 +882,7 @@ class SpectralModelManager(QObject):
             self._compound_model = _buildSummedCompoundModel(model)
         elif type(model) == type(""):
             global _model_directory
-            self._compound_model, _model_directory = buildModelFromFile(model)
+            self._compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
         else:
             self._compound_model = model
 
@@ -1062,7 +950,7 @@ class SpectralModelManager(QObject):
                 self._compound_model = _buildSummedCompoundModel(model)
             elif type(model) == type(""):
                 global _model_directory
-                self._compound_model, _model_directory = buildModelFromFile(model)
+                self._compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
             else:
                 self._compound_model = model
 
