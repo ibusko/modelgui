@@ -294,10 +294,9 @@ class _SpectralModelsWindow(_BaseWindow):
         if hasattr(model, 'compound_model'):
             compound_model = model.compound_model
             expression = ""
-            if compound_model:
+            if compound_model and hasattr(compound_model, '_format_expression'):
                 expression = compound_model._format_expression()
             self.expression_field.setText(expression)
-
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button, self.save_button, model)
@@ -773,8 +772,11 @@ class SpectralComponentsModel(QStandardItemModel):
         self.setHorizontalHeaderLabels([name])
 
     def addItems(self, elements):
-        for element in elements:
-            self.addOneElement(element)
+        if hasattr(elements, '__getitem__'):
+            for element in elements:
+                self.addOneElement(element)
+        else:
+            self.addOneElement(elements)
 
     def addOneElement(self, element):
         name = models_registry.get_component_name(element)
@@ -889,11 +891,6 @@ class ActiveComponentsModel(SpectralComponentsModel):
                 tiedItem = SpectralComponentTiedItem(par)
                 tiedItem.setDataItem(par.tied)
                 parItem.appendRow(tiedItem)
-
-        # This is resetting the compound model to an all-summed model.
-        # We still have to figure out how to preserve the existing compound
-        # model expression.
-        self.compound_model = _buildSummedCompoundModel(self.items)
 
     @property
     def items(self):
