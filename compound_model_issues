@@ -1,0 +1,101 @@
+After much head banging with GUI code that was apparently buggy, I found that
+the underlying cause is that astropy compound models cannot be edited with simple
+minded GUI designs. Maybe they cannot be edited with *any* GUI design. Here is
+why:
+
+First, an example at the command line level:
+
+[Ivos-MacBook-Pro:~] busko% python
+Python 2.7.11 |Continuum Analytics, Inc.| (default, Dec  6 2015, 18:57:58)
+[GCC 4.2.1 (Apple Inc. build 5577)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+Anaconda is brought to you by Continuum Analytics.
+Please check out: http://continuum.io/thanks and https://anaconda.org
+>>> import astropy.modeling.models as models
+>>> c1 = models.Const1D(0.0)
+>>> c1.amplitude = 1.0
+>>> c2 = models.Const1D(0.0)
+>>> c = c1 + c2
+>>> c
+<CompoundModel0(amplitude_0=1.0, amplitude_1=0.0)>
+>>> c2.amplitude = 2.0
+>>> c
+<CompoundModel0(amplitude_0=1.0, amplitude_1=0.0)>
+>>> c._submodels
+[<Const1D(amplitude=1.0)>, <Const1D(amplitude=2.0)>]
+>>>
+
+This script snippet is simulating what happens when trying to build a compound
+model in a step-by-step fashion, as when adding spectral components, one after
+the other, delivered by GUI actions such as selecting spectral components from
+a drop-down menu populated with astropy spectral models.
+
+First, we get component 'c1', which is added to the GUI. Next, we use GUI actions
+to configure component 'c1' to our liking, such as changing its 'amplitude' value.
+Then, we decide that we need to add a second component, 'c2', to our model. That
+works OK as long as we do not change anything in any of these components anymore.
+
+If we decide to change a parameter in 'c2', from a GUI action perhaps, the resulting
+compound model 'c' gets into a weird state where it's (private) _submodels attribute
+is modified to our liking, but everything else in the 'c' instance still has the old
+values. This is because _submodels contains direct references to the components that
+originated 'c', while everything else has to be computed by explicit actions on 'c'.
+
+Continuing with the example, we repeat with a third component:
+
+>>> c3 = models.Const1D(0.0)
+>>> c = c + c3
+>>> c
+<CompoundModel1(amplitude_0=1.0, amplitude_1=2.0, amplitude_2=0.0)>
+>>> c3.amplitude = 3.0
+>>> c
+<CompoundModel1(amplitude_0=1.0, amplitude_1=2.0, amplitude_2=0.0)>
+>>> c._submodels
+[<Const1D(amplitude=1.0)>, <Const1D(amplitude=2.0)>, <Const1D(amplitude=3.0)>]
+>>>
+
+We see now that, as we act on 'c', in this example using it in the expression
+
+ c = c + c3
+
+its internals get properly updated up to, but not including, the last added component.
+
+Such internally inconsistent compound models can't compute the correct fluxes, given
+a set of wavelength values.
+
+Btw, Erik told me that this is the expected behavior. Shouldn't be a problem for the
+command line or scripting user, since _submodels is private anyway. 
+
+This test shows that, whatever techniques we use to update compound models in a
+piecemeal fashion, the result will be inconsistent. Some additional processing would
+be needed to move the compound model thus operated into a self-consistent state.
+
+We could consider only uni-directional connections that go from the astropy object to
+the GUI. Although I fail to see how such uni-directional flow would be of much use to
+our application.
+
+We could also access the compound model elements using index notation, such as 'c[0]' to
+access the 0-th element. That would entail very complex GUI code though, since direct
+references couldn't be used as with the approach outlined above.
+
+Simpler requirements can make this problem go away though. Allowing only simple additive
+compound models will entirely remove connections from GUI elements to/from the model. The
+code can rely entirely on the list of GUI elements to keep its state; a discardable, temporary,
+non-editable instance of a compound model would be built, on-the-fly and on demand, from
+the GUI elements, whenever it would be needed. This would be probably necessary only when
+computing model values given a set of wavelength values.
+
+Note that this issue is only significant when doing piecemeal updates to a compound model.
+When reading a compound model from an import file, everything is in memory already thus the
+compound model with its computation expression will be all there. Editing values in this
+model poses no problem because its structure does not change when changing values only.
+Changing the model structure (as when adding or deleting components) is not possible though.
+
+
+
+
+
+
+
+
+

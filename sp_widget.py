@@ -238,6 +238,14 @@ class _SpectralModelsGUI(object):
 
     def updateModel(self, component):
         self._model.addOneElement(component)
+
+        # new components are added to existing compound model
+        if hasattr(self._model, 'compound_model'):
+            self._model.compound_model = self._model.compound_model + component
+        else:
+            self._model.compound_model = component
+        self.window.updateExpressionField(self._model.compound_model )
+
         self.window.emit(SIGNAL("treeChanged"), 0)
 
     def getSelectedModel(self):
@@ -288,15 +296,9 @@ class _SpectralModelsWindow(_BaseWindow):
         self.expression_layout.addWidget(self.expression_field)
         self.expression_field.setFocusPolicy(Qt.NoFocus)  # remove to enable editing
 
-        # we keep a compound model instance in parallel with its list
-        # representation. The main purpose of this is to keep the
-        # compound model expression at hand at all times.
         if hasattr(model, 'compound_model'):
             compound_model = model.compound_model
-            expression = ""
-            if compound_model and hasattr(compound_model, '_format_expression'):
-                expression = compound_model._format_expression()
-            self.expression_field.setText(expression)
+            self.updateExpressionField(compound_model)
 
         # setup to gray out buttons based on context.
         self.treeView.setButtons(up_button, down_button, delete_button, self.save_button, model)
@@ -313,6 +315,12 @@ class _SpectralModelsWindow(_BaseWindow):
     # remains to be seen if this assumption will hold under user scrutiny.
     def _setSaveButtonLooks(self):
         self.save_button.setEnabled(len(self.model.items) > 0)
+
+    def updateExpressionField(self, compound_model):
+        expression = ""
+        if compound_model and hasattr(compound_model, '_format_expression'):
+            expression = compound_model._format_expression()
+        self.expression_field.setText(expression)
 
     # contextual menu
     def openMenu(self, position):
@@ -702,8 +710,9 @@ class ActiveComponentsModel(SpectralComponentsModel):
     def __init__(self, components, name):
         SpectralComponentsModel.__init__(self, name)
 
-        self.compound_model = components
-        self.addItems(self.compound_model)
+        if components:
+            self.compound_model = components
+            self.addItems(self.compound_model)
 
         self.itemChanged.connect(self._onItemChanged)
 
@@ -876,15 +885,20 @@ class SpectralModelManager(QObject):
     def __init__(self, model=None, drop_down=True):
         super(SpectralModelManager, self).__init__()
 
+        # _init_compound_model is used just to hold a reference
+        # to any compound model one wishes to use to start up
+        # the tool. The actual compound model used in operations
+        # is set by the buildMainPanel method. It lives in
+        # self.model_gui.model.compound_model.
         if model == None:
-            self._compound_model = None
+            self._init_compound_model = None
         elif type(model) == type(list):
-            self._compound_model = _buildSummedCompoundModel(model)
+            self._init_compound_model = _buildSummedCompoundModel(model)
         elif type(model) == type(""):
             global _model_directory
-            self._compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
+            self._init_compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
         else:
-            self._compound_model = model
+            self._init_compound_model = model
 
         self._drop_down = drop_down
 
@@ -944,21 +958,25 @@ class SpectralModelManager(QObject):
         """
         # override whatever model was passed to the constructor.
         # This specific form of the conditional avoids a mishap
-        # when self._compound_model is an empty list.
-        if model != None:
-            if type(model) == type([]):
-                self._compound_model = _buildSummedCompoundModel(model)
-            elif type(model) == type(""):
-                global _model_directory
-                self._compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
-            else:
-                self._compound_model = model
+        # when self._init_compound_model is an empty list.
+        if model == None:
+            self._init_compound_model = None
+        elif type(model) == type(list):
+            self._init_compound_model = _buildSummedCompoundModel(model)
+        elif type(model) == type(""):
+            global _model_directory
+            self._init_compound_model, _model_directory = sp_model_io.buildModelFromFile(model)
+        else:
+            self._init_compound_model = model
 
         # When called the first time, build the two trees.
         # Subsequent calls must re-use the existing trees
         # so as to preserve user selections and such.
         if not hasattr(self, 'models_gui'):
-            self.models_gui = _SpectralModelsGUI(self._compound_model)
+            # note that _init_compound_model is passed as an initializer, but
+            # any other reference to the actual compound model that lives in
+            # the GUI must be done via reference self.models_gui.model.compound_model.
+            self.models_gui = _SpectralModelsGUI(self._init_compound_model)
             self._library_gui = _SpectralLibraryGUI(self.models_gui, self.x, self.y, drop_down=self._drop_down)
 
         if self._drop_down:
@@ -1026,12 +1044,12 @@ class SpectralModelManager(QObject):
         the model, a zero-valued array is returned instead.
 
         '''
-        # self._compound_model can be either a list of components
+        # The compound_model can be either a list of components
         # or a compound model instance. In the case of a
         # list, we just add the components sequentially.
         if len(self.components) > 0:
-            if not type(self._compound_model) == type([]):
-                compound_model = self._compound_model
+            if not type(self.models_gui.model.compound_model) == type([]):
+                compound_model = self.models_gui.model.compound_model
             else:
                 compound_model = _buildSummedCompoundModel(self.components)
 
