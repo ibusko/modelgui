@@ -30,10 +30,11 @@ model in a step-by-step fashion, as when adding spectral components, one after
 the other, delivered by GUI actions such as selecting spectral components from
 a drop-down menu populated with astropy spectral models.
 
-First, we get component 'c1', which is added to the GUI. Next, we use GUI actions
-to configure component 'c1' to our liking, such as changing its 'amplitude' value.
-Then, we decide that we need to add a second component, 'c2', to our model. That
-works OK as long as we do not change anything in any of these components anymore.
+First, we get component 'c1', which is added to the GUI and makes the starting
+point of a compound model. Next, we use GUI actions to configure component 'c1'
+to our liking, such as changing its 'amplitude' value. Then, we decide that we
+need to add a second component, 'c2', to our model. That works OK as long as we
+do not change anything in any of these components anymore.
 
 If we decide to change a parameter in 'c2', from a GUI action perhaps, the resulting
 compound model 'c' gets into a weird state where it's (private) _submodels attribute
