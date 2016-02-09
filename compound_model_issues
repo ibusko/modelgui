@@ -1,7 +1,7 @@
 After much head banging with GUI code that was apparently buggy, I found that
-the underlying cause is that astropy compound models cannot be edited with simple
-minded GUI designs. Maybe they cannot be edited with *any* GUI design. Here is
-why:
+the underlying cause is that astropy compound models cannot be edited (in their
+structure) with simple minded GUI designs. Maybe they cannot be edited with *any*
+GUI design. Here is why:
 
 First, an example at the command line level:
 
